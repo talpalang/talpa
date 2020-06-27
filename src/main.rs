@@ -763,9 +763,16 @@ impl<'a> ParseAction<'a> {
         return self.p.unexpected_char();
     }
     fn parse_return(&mut self) -> Result<ParseActionStateReturn, ParsingError> {
-        let res = ParseActionStateReturn { action: None };
+        let mut res = ParseActionStateReturn { action: None };
 
-        // TODO
+        match self.p.next_while(" \t\n") {
+            Some('}') => {}
+            Some(_) => {
+                let action = ParseAction::start(self.p, true, ActionToExpect::Assignment)?;
+                res.action = Some(action);
+            }
+            None => return self.p.error(ParsingErrorType::UnexpectedEOF),
+        }
 
         Ok(res)
     }

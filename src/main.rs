@@ -853,17 +853,18 @@ impl<'a> ParseAction<'a> {
 mod tests {
     use super::*;
 
+    // Parse a string of code
     fn parse_str(contents: impl Into<String>) -> Parser {
         Parser::parse(contents.into().as_bytes()).unwrap()
     }
 
     #[test]
-    fn test_nothing() {
+    fn test_empty() {
         parse_str(r#""#);
     }
 
     #[test]
-    fn test_simple_function() {
+    fn test_function_empty() {
         parse_str(
             r#"
                 fn test() {}
@@ -872,7 +873,7 @@ mod tests {
     }
 
     #[test]
-    fn test_2_functions() {
+    fn test_functions_empty() {
         parse_str(
             r#"
                 fn test1() {}
@@ -885,13 +886,13 @@ mod tests {
     fn test_function_with_arg() {
         parse_str(
             r#"
-                fn test(ab string) {}
+                fn test(name string) {}
             "#,
         );
     }
 
     #[test]
-    fn test_function_with_multiple_args() {
+    fn test_function_with_args() {
         parse_str(
             r#"
                 fn test(foo string, bar string, baz string) {}
@@ -922,27 +923,51 @@ mod tests {
     }
 
     #[test]
-    fn test_variable() {
+    fn test_function_call() {
         parse_str(
             r#"
-                fn test() string {
-                    let foo = "1234"
-                }
+                fn test() {}
+                test()
             "#,
         );
     }
 
     #[test]
-    fn test_variable_2() {
+    fn test_function_call_with_args() {
         parse_str(
             r#"
-                fn test() string {
-                    let foo = ""
-                    let bar = foo
-                    let baz = bar
-                    return baz
-                }
+                fn test(a int, b int) {}
+                test(1, 2)
+            "#
+        );
+    }
+
+    #[test]
+    fn test_variable() {
+        parse_str(
+            r#"
+                let foo = "1234"
             "#,
+        );
+    }
+
+    #[test]
+    fn test_variables() {
+        parse_str(
+            r#"
+                let foo = ""
+                let bar = foo
+                let baz = bar
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_variable_string_with_spaces() {
+        parse_str(
+            r#"
+                let foo = "Hello world!"
+            "#
         );
     }
 }

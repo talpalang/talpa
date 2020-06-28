@@ -1,16 +1,87 @@
-Temp repo for a programing language made to be compiled into other languages.
+# General Programming Language
 
-Currently almost nothing works yet :),
-Currently all code is written around tests so to add more code also requires adding more tests.
-Tests can be exuecuted using:
+> This is a temporary repository for a new programming language designed to be compiled into many other languages.
+> For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235).
+
+Currently, the language contains very few working features. When adding new features, the project follows [test-driven development](https://en.wikipedia.org/wiki/Test-driven_development) practices.
+
+
+## Roadmap
+
+This roadmap is used to track the progress on the project. If you add a feature and all tests pass, tick it off below.
+
+   * Parsing stage 1 (Parse the code into types)
+
+      * [x]  Functions
+
+        * [x]  Function keyword and body detection `fn FunctionName() {}`
+        * [x]  Function arguments `fn foo(bar string) {}`
+        * [x]  Function response `fn foo() string {}`
+      * [ ]  Types
+
+        * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
+        * [ ]  Extending types parsing `foo<bar>`
+        * [ ]  Inline types `struct{}`
+      * [ ]  Actions
+
+        * [ ]  Variables
+
+          * [ ]  Keyword and name `let a`, `const a`
+          * [ ]  Variable type `let a: string`
+          * [ ]  assignment `let foo = "bar"` or `let foo = bar()`
+        * [ ]  Function
+
+          * [ ]  default `foo()`
+          * [ ]  arguments `foo(bar, "baz")`
+        * [ ]  Static actions
+
+          * [ ]  `return`
+          * [ ]  `loop {}`
+          * [ ]  `while true {}`
+          * [ ]  `for foo in bar {}`
+
+   * Parsing stage 2 verifying the data and making it more accessible
+
+      * [ ]  Validating all types
+
+        * [ ]  User created types
+        * [ ]  Buildin types
+      * [ ]  List of actions
+
+        * [ ]  Make it impossible to set variable without using it
+
+   * Documentation
+
+      * [x]  Code examples for the currently support language features in tests
+      * [ ]  A Markdown file with code examples
+
+        * [ ]  What is currently supported
+        * [ ]  List of language features goals like how should inline function work etc..
+
+
+## Testing
+
+As the project uses [test-driven development](https://en.wikipedia.org/wiki/Test-driven_development), it is important tests are run when making changes. Tests can be run by using the following commands in the command line.
+
 ```bash
-# run all tests
+# Run all tests
 cargo test
 
-# run a spesific test
-cargo test test_nothing
+# Run a specific test
+cargo test -- --nocapture test_empty
+
+# Run all tests with function in the name
+cargo test function
 ```
 
-Some design goals i think are important:
+
+## Design Goals
+
+Some design goals I think are important:
 - Preferably no dependencies
 - No non cargo tools required to build this project *([By installing rust](https://www.rust-lang.org/tools/install) you should have everything to get started working on this though i might require rust nightly if needed)*
+
+
+## License
+
+[MIT](https://choosealicense.com/licenses/mit/)

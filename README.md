@@ -53,10 +53,10 @@ This roadmap is used to track the progress on the project. If you add a feature 
    * Documentation
 
       * [x]  Code examples for the currently support language features in tests
-      * [ ]  A Markdown file with code examples
+      * [x]  A Markdown file with code examples (see [docs](docs/README.md))
 
-        * [ ]  What is currently supported
-        * [ ]  List of language features goals like how should inline function work etc..
+        * [x]  What is currently supported (see [docs](docs/README.md))
+        * [x]  List of language features goals like how should inline function work etc.. (see [dev plans](docs/README.md#maintainer-development-plans))
 
 
 ## Testing

@@ -956,17 +956,6 @@ mod tests {
     }
 
     #[test]
-    fn test_variables() {
-        parse_str(
-            r#"
-                let foo = ""
-                let bar = foo
-                let baz = bar
-            "#,
-        );
-    }
-
-    #[test]
     fn test_variable_string_with_spaces() {
         parse_str(
             r#"

@@ -963,4 +963,14 @@ mod tests {
             "#
         );
     }
+    
+    #[test]
+    fn test_variable_strings_with_backslashes() {
+        parse_str(
+            r#"
+                const foo = "I like to say \"Hello World!\" in my code."
+                const bar = "This \\ backslash is displayed when printed!"
+            "#
+        );
+    }
 }

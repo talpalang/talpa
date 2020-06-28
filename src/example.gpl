@@ -1,0 +1,3 @@
+fn empty() {}
+
+fn take_args(a int, b int) {}

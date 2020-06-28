@@ -5,7 +5,9 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-    let mut file = File::open("./example").unwrap();
+    // the .gpl is a temporary file extension (General Programming Language)
+    // the example file should be updated with all working components
+    let mut file = File::open("./src/example.gpl").unwrap();
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
     match Parser::parse(contents) {

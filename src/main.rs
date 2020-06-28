@@ -665,10 +665,23 @@ impl Into<Action> for ActionAssigment {
 }
 
 #[derive(Debug)]
+struct ActionFunctionCall {
+    name: String,
+    arguments: Vec<Action>,
+}
+
+impl Into<Action> for ActionFunctionCall {
+    fn into(self) -> Action {
+        Action::FunctionCall(self)
+    }
+}
+
+#[derive(Debug)]
 enum Action {
     Variable(ActionVariable),
     Return(Option<Box<Action>>),
     Assigment(ActionAssigment),
+    FunctionCall(ActionFunctionCall),
 }
 
 struct ParseAction<'a> {
@@ -678,9 +691,21 @@ struct ParseAction<'a> {
 }
 
 enum ParseActionState {
-    Var(ParseActionStateVar),             // let foo = bar
-    Return(ParseActionStateReturn),       // return foo
-    Assigment(ParseActionStateAssigment), // foo = bar
+    Var(ParseActionStateVar),                   // let foo = bar
+    Return(ParseActionStateReturn),             // return foo
+    Assigment(ParseActionStateAssigment),       // foo = bar
+    FunctionCall(ParseActionStateFunctionCall), // foo(bar)
+}
+
+struct ParseActionStateFunctionCall {
+    name: String,
+    arguments: Vec<Action>,
+}
+
+impl Into<ParseActionState> for ParseActionStateFunctionCall {
+    fn into(self) -> ParseActionState {
+        ParseActionState::FunctionCall(self)
+    }
 }
 
 struct ParseActionStateAssigment {
@@ -790,6 +815,11 @@ impl<'a> ParseAction<'a> {
                 }
                 .into()
             }
+            ParseActionState::FunctionCall(meta) => ActionFunctionCall {
+                name: meta.name,
+                arguments: meta.arguments,
+            }
+            .into(),
         });
         Ok(())
     }
@@ -863,14 +893,44 @@ impl<'a> ParseAction<'a> {
             DetectedAction::Assignment(found_equal_sign) => {
                 let res = self.parse_assignment(name_string, !found_equal_sign)?;
                 self.commit_state(res)?;
-                return Ok(());
             }
             DetectedAction::Function => {
-                // TODO: Make this
+                let res = self.parse_function(name_string, false)?;
+                self.commit_state(res)?;
+            }
+        };
+        return Ok(());
+    }
+    fn parse_function(
+        &mut self,
+        name: String,
+        check_for_function_open_sign: bool,
+    ) -> Result<ParseActionStateFunctionCall, ParsingError> {
+        let res = ParseActionStateFunctionCall {
+            name,
+            arguments: vec![],
+        };
+
+        if check_for_function_open_sign {
+            match self.p.next_char() {
+                Some('(') => {} // This is what we exect. return no error
+                None => return self.p.unexpected_eof(),
+                _ => return self.p.unexpected_char(),
             }
         }
 
-        return self.p.unexpected_char();
+        loop {
+            // TODO: Add code for parsing the arguments
+            break;
+        }
+
+        match self.p.next_while(" \t\n") {
+            Some(')') => {} // This is what we exect. return no error
+            None => return self.p.unexpected_eof(),
+            _ => return self.p.unexpected_char(),
+        }
+
+        Ok(res)
     }
     fn parse_assignment(
         &mut self,
@@ -1074,7 +1134,7 @@ mod tests {
                 fn test_1() {
                     test(1, 2)
                 }
-            "#
+            "#,
         );
     }
 
@@ -1092,17 +1152,17 @@ mod tests {
         parse_str(
             r#"
                 const foo = "Hello world!"
-            "#
+            "#,
         );
     }
-    
+
     #[test]
     fn test_variable_strings_with_backslashes() {
         parse_str(
             r#"
                 const foo = "I like to say \"Hello World!\" in my code."
                 const bar = "This \\ backslash is displayed when printed!"
-            "#
+            "#,
         );
     }
 }

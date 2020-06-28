@@ -966,7 +966,7 @@ mod tests {
     fn test_variable_string_with_spaces() {
         parse_str(
             r#"
-                let foo = "Hello world!"
+                const foo = "Hello world!"
             "#
         );
     }

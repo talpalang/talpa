@@ -946,7 +946,7 @@ mod tests {
     fn test_variable() {
         parse_str(
             r#"
-                let foo = "1234"
+                const foo = "1234"
             "#,
         );
     }

@@ -5,7 +5,9 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-    let mut file = File::open("./example").unwrap();
+    // the .gpl is a temporary file extension (General Programming Language)
+    // the example file should be updated with all working components
+    let mut file = File::open("./src/example.gpl").unwrap();
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
     match Parser::parse(contents) {
@@ -851,17 +853,18 @@ impl<'a> ParseAction<'a> {
 mod tests {
     use super::*;
 
+    // Parse a string of code
     fn parse_str(contents: impl Into<String>) -> Parser {
         Parser::parse(contents.into().as_bytes()).unwrap()
     }
 
     #[test]
-    fn test_nothing() {
+    fn test_empty() {
         parse_str(r#""#);
     }
 
     #[test]
-    fn test_simple_function() {
+    fn test_function_empty() {
         parse_str(
             r#"
                 fn test() {}
@@ -870,7 +873,7 @@ mod tests {
     }
 
     #[test]
-    fn test_2_functions() {
+    fn test_functions_empty() {
         parse_str(
             r#"
                 fn test1() {}
@@ -883,13 +886,13 @@ mod tests {
     fn test_function_with_arg() {
         parse_str(
             r#"
-                fn test(ab string) {}
+                fn test(name string) {}
             "#,
         );
     }
 
     #[test]
-    fn test_function_with_multiple_args() {
+    fn test_function_with_args() {
         parse_str(
             r#"
                 fn test(foo string, bar string, baz string) {}
@@ -920,27 +923,54 @@ mod tests {
     }
 
     #[test]
-    fn test_variable() {
+    fn test_function_call() {
         parse_str(
             r#"
-                fn test() string {
-                    let foo = "1234"
+                fn test() {}
+                fn test_1() {
+                    test()
                 }
             "#,
         );
     }
 
     #[test]
-    fn test_variable_2() {
+    fn test_function_call_with_args() {
         parse_str(
             r#"
-                fn test() string {
-                    let foo = ""
-                    let bar = foo
-                    let baz = bar
-                    return baz
+                fn test(a int, b int) {}
+                fn test_1() {
+                    test(1, 2)
                 }
+            "#
+        );
+    }
+
+    #[test]
+    fn test_variable() {
+        parse_str(
+            r#"
+                const foo = "1234"
             "#,
+        );
+    }
+
+    #[test]
+    fn test_variable_string_with_spaces() {
+        parse_str(
+            r#"
+                const foo = "Hello world!"
+            "#
+        );
+    }
+    
+    #[test]
+    fn test_variable_strings_with_backslashes() {
+        parse_str(
+            r#"
+                const foo = "I like to say \"Hello World!\" in my code."
+                const bar = "This \\ backslash is displayed when printed!"
+            "#
         );
     }
 }

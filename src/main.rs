@@ -107,6 +107,7 @@ impl Display for ParsingError {
     }
 }
 
+#[derive(Debug)]
 struct Parser {
     index: usize,
     contents: Vec<u8>,
@@ -858,6 +859,21 @@ mod tests {
         Parser::parse(contents.into().as_bytes()).unwrap()
     }
 
+    // Parse a string of code that is meant to fail
+    fn parse_str_fail(contents: impl Into<String>) -> Parser {
+        // Parse the code
+        let res = Parser::parse(contents.into().as_bytes());
+        // If the code parsed without error
+        if res.is_ok() {
+            // There is a problem with the parser
+            // Output the result in an error (failing the test)
+            panic!("{:?}", res);
+        } else {
+            // The code fails, which is what we want
+            return parse_str(r#""#);
+        }
+    }
+
     #[test]
     fn test_empty() {
         parse_str(r#""#);
@@ -970,6 +986,15 @@ mod tests {
             r#"
                 const foo = "I like to say \"Hello World!\" in my code."
                 const bar = "This \\ backslash is displayed when printed!"
+            "#
+        );
+    }
+
+    #[test]
+    fn test_variable_global_let() {
+        parse_str_fail(
+            r#"
+                let foo = 0
             "#
         );
     }

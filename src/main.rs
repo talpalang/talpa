@@ -937,7 +937,9 @@ mod tests {
         parse_str(
             r#"
                 fn test(a int, b int) {}
-                test(1, 2)
+                fn test_1() {
+                    test(1, 2)
+                }
             "#
         );
     }

@@ -227,34 +227,6 @@ impl Parser {
         }
         None
     }
-    // fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
-    //     for letter in text.chars() {
-    //         match self.next_char() {
-    //             Some(v) if v == letter => {}
-    //             Some(_) => return self.error(ParsingErrorType::UnexpectedChar, None),
-    //             None => {
-    //                 return self.error(ParsingErrorType::UnexpectedEOF, None);
-    //             }
-    //         }
-    //     }
-    //     Ok(())
-    // }
-    fn forward_until(
-        &mut self,
-        allowed_chars: impl Into<String>,
-        until: char,
-    ) -> Result<(), ParsingError> {
-        let allowed_chars_string = allowed_chars.into();
-        while let Some(c) = self.next_char() {
-            if c == until {
-                return Ok(());
-            }
-            if !allowed_chars_string.contains(c) {
-                return self.error(ParsingErrorType::UnexpectedChar);
-            }
-        }
-        self.error(ParsingErrorType::UnexpectedEOF)
-    }
 
     /// Tries to match something
     /// The second string for the options array is for checking if the matched value has a certen surfix
@@ -339,6 +311,40 @@ impl Parser {
         }
         Ok(())
     }
+
+    /*
+        Functions written but not used so commented out
+    */
+
+    // fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
+    //     for letter in text.chars() {
+    //         match self.next_char() {
+    //             Some(v) if v == letter => {}
+    //             Some(_) => return self.error(ParsingErrorType::UnexpectedChar, None),
+    //             None => {
+    //                 return self.error(ParsingErrorType::UnexpectedEOF, None);
+    //             }
+    //         }
+    //     }
+    //     Ok(())
+    // }
+
+    // fn forward_until(
+    //     &mut self,
+    //     allowed_chars: impl Into<String>,
+    //     until: char,
+    // ) -> Result<(), ParsingError> {
+    //     let allowed_chars_string = allowed_chars.into();
+    //     while let Some(c) = self.next_char() {
+    //         if c == until {
+    //             return Ok(());
+    //         }
+    //         if !allowed_chars_string.contains(c) {
+    //             return self.error(ParsingErrorType::UnexpectedChar);
+    //         }
+    //     }
+    //     self.error(ParsingErrorType::UnexpectedEOF)
+    // }
 }
 
 #[derive(Debug)]
@@ -638,10 +644,29 @@ struct ActionVariable {
     action: Box<Action>,
 }
 
+impl Into<Action> for ActionVariable {
+    fn into(self) -> Action {
+        Action::Variable(self)
+    }
+}
+
+#[derive(Debug)]
+struct ActionAssigment {
+    name: String,
+    action: Box<Action>,
+}
+
+impl Into<Action> for ActionAssigment {
+    fn into(self) -> Action {
+        Action::Assigment(self)
+    }
+}
+
 #[derive(Debug)]
 enum Action {
     Variable(ActionVariable),
     Return(Option<Box<Action>>),
+    Assigment(ActionAssigment),
 }
 
 struct ParseAction<'a> {
@@ -651,8 +676,20 @@ struct ParseAction<'a> {
 }
 
 enum ParseActionState {
-    Var(ParseActionStateVar),
-    Return(ParseActionStateReturn),
+    Var(ParseActionStateVar),             // let foo = bar
+    Return(ParseActionStateReturn),       // return foo
+    Assigment(ParseActionStateAssigment), // foo = bar
+}
+
+struct ParseActionStateAssigment {
+    name: String,
+    action: Option<Action>,
+}
+
+impl Into<ParseActionState> for ParseActionStateAssigment {
+    fn into(self) -> ParseActionState {
+        ParseActionState::Assigment(self)
+    }
 }
 
 struct ParseActionStateReturn {
@@ -684,6 +721,15 @@ enum ActionToExpect {
     Assignment, // A assingment of some sort, like the contents of a variable or a function argument or the value of the return
 }
 
+enum DetectedAction {
+    Assignment(bool), // 1. variable assgiment `foo` or `foo = bar` (The bool is to tell if we have found the =)
+    Function,         // 2. functions `foo()`
+                      // 3. inline strings `"foo"`
+                      // 4. inline numbers `1`
+                      // 5. inline arrays `[foo, bar]`
+                      // 6. inline structs `foo{bar: baz}`
+}
+
 impl<'a> ParseAction<'a> {
     fn start(
         p: &'a mut Parser,
@@ -706,7 +752,7 @@ impl<'a> ParseAction<'a> {
         }
     }
     fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), ParsingError> {
-        match state.into() {
+        self.res = Some(match state.into() {
             ParseActionState::Var(meta) => {
                 if let None = meta.action {
                     return self
@@ -714,21 +760,35 @@ impl<'a> ParseAction<'a> {
                         .error(ParsingErrorType::Custom("Missing variable assignment"));
                 }
 
-                self.res = Some(Action::Variable(ActionVariable {
+                ActionVariable {
                     name: String::from_utf8(meta.name.clone()).unwrap(),
                     var_type: meta.var_type.clone(),
                     type_: meta.type_,
                     action: Box::new(meta.action.unwrap()),
-                }));
+                }
+                .into()
             }
             ParseActionState::Return(meta) => {
                 let mut return_action: Option<Box<Action>> = None;
                 if let Some(action) = meta.action {
                     return_action = Some(Box::new(action));
                 }
-                self.res = Some(Action::Return(return_action))
+                Action::Return(return_action)
             }
-        };
+            ParseActionState::Assigment(meta) => {
+                if let None = meta.action {
+                    return self
+                        .p
+                        .error(ParsingErrorType::Custom("Missing variable assignment"));
+                }
+
+                ActionAssigment {
+                    name: meta.name,
+                    action: Box::new(meta.action.unwrap()),
+                }
+                .into()
+            }
+        });
         Ok(())
     }
     fn detect(&mut self) -> Result<(), ParsingError> {
@@ -741,6 +801,8 @@ impl<'a> ParseAction<'a> {
         } else {
             None
         };
+
+        // Try to match a keyword and react to it
         if let Some(matched) = matched_res {
             if matched == CONST_KEYWORD || matched == LET_KEYWORD {
                 // Go to parsing the variable
@@ -760,7 +822,77 @@ impl<'a> ParseAction<'a> {
             return Ok(());
         }
 
+        // We are in a wired state right now where a lot of things are possible like
+        // 1. variable assgiment `foo` or `foo = bar`
+        // 2. functions `foo()`
+        // 3. inline strings `"foo"`
+        // 4. inline numbers `1`
+        // 5. inline arrays `[foo, bar]`
+        // 6. inline structs `foo{bar: baz}`
+        //
+        // The code underhere will detect what the action is,
+        // TODO: 2, 3, 4, 5, 6
+        let mut name: Vec<u8> = vec![];
+        let mut detected_action = DetectedAction::Assignment(false);
+        let mut next_char = self.p.next_char();
+        while let Some(c) = next_char {
+            match c {
+                ' ' | '\t' | '\n' if name.len() > 0 => break,
+                _ if legal_name_char(c) => name.push(c as u8),
+                '(' => {
+                    detected_action = DetectedAction::Function;
+                    break;
+                }
+                '=' => {
+                    detected_action = DetectedAction::Assignment(true);
+                    break;
+                }
+                _ => return self.p.unexpected_char(),
+            }
+            next_char = self.p.next_char();
+        }
+        if let None = next_char {
+            return self.p.unexpected_eof();
+        }
+        let name_string = String::from_utf8(name).unwrap();
+
+        // Do things relative to the detected action
+        match detected_action {
+            DetectedAction::Assignment(found_equal_sign) => {
+                let res = self.parse_assignment(name_string, !found_equal_sign)?;
+                self.commit_state(res)?;
+                return Ok(());
+            }
+            DetectedAction::Function => {
+                // TODO: Make this
+            }
+        }
+
         return self.p.unexpected_char();
+    }
+    fn parse_assignment(
+        &mut self,
+        name: String,
+        check_for_equal_sign: bool,
+    ) -> Result<ParseActionStateAssigment, ParsingError> {
+        let mut res = ParseActionStateAssigment { name, action: None };
+
+        if check_for_equal_sign {
+            match self.p.next_while(" \t\n") {
+                Some('=') => {}
+                _ => return self.p.unexpected_char(),
+            }
+        }
+
+        match self.p.next_while(" \t\n") {
+            Some(_) => {
+                let action = ParseAction::start(self.p, true, ActionToExpect::Assignment)?;
+                res.action = Some(action);
+            }
+            None => return self.p.unexpected_eof(),
+        }
+
+        Ok(res)
     }
     fn parse_return(&mut self) -> Result<ParseActionStateReturn, ParsingError> {
         let mut res = ParseActionStateReturn { action: None };
@@ -771,7 +903,7 @@ impl<'a> ParseAction<'a> {
                 let action = ParseAction::start(self.p, true, ActionToExpect::Assignment)?;
                 res.action = Some(action);
             }
-            None => return self.p.error(ParsingErrorType::UnexpectedEOF),
+            None => return self.p.unexpected_eof(),
         }
 
         Ok(res)

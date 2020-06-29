@@ -864,7 +864,7 @@ mod tests {
         // Parse the code
         let res = Parser::parse(contents.into().as_bytes());
         // If the code parsed without error
-        if res.is_ok() {
+        if let Ok(parsed_content) = res {
             // There is a problem with the parser
             // Output the result in an error (failing the test)
             panic!("{:?}", res);

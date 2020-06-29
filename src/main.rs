@@ -860,7 +860,7 @@ mod tests {
     }
 
     // Parse a string of code that is meant to fail
-    fn parse_str_fail(contents: impl Into<String>) -> Parser {
+    fn parse_str_fail(contents: impl Into<String>) {
         // Parse the code
         let res = Parser::parse(contents.into().as_bytes());
         // If the code parsed without error

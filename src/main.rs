@@ -867,7 +867,7 @@ mod tests {
         if let Ok(parsed_content) = res {
             // There is a problem with the parser
             // Output the result in an error (failing the test)
-            panic!("{:?}", res);
+            panic!("{:?}", parsed_content);
         } else {
             // The code fails, which is what we want
             return parse_str(r#""#);

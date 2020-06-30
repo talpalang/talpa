@@ -36,3 +36,13 @@ fn test_variable_global_let() {
             "#,
   );
 }
+
+#[test]
+fn test_variable_starts_with_number() {
+  // variables should never start with a number
+  parse_str_fail(
+    r#"
+                const 1fail = 0
+            "#,
+  );
+}

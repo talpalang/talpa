@@ -2,10 +2,17 @@
 
 > This documentation is incomplete.
 
-Functions use the following syntax.
+Functions are declared using the `fn` keyword. Its arguments are type annotated, with the type following the name of the formal argument. 
+If the function returns a value, the return type must be specified after the arguments are defined, but before the scope.
+The scope contains the functions code. It begins at `{` and ends at `}`.
+Use the `return` keyword to return from the function, and if you are returning a value, it is followed by the variable name. 
+
+Below is an implementation of a simple adder function.
 
 ```
-fn my_function(my_argument string) {
-    return my_argument
+fn add(a int, b int) int {
+    return a + b
 }
 ```
+
+As you can see, we take two arguments (a and b) that must both be integers. We define the return type (int). We then return the result of `a + b` using the return keyword inside the scope. 

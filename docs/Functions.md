@@ -5,7 +5,7 @@
 Functions are declared using the `fn` keyword. Its arguments are type annotated, with the type following the name of the formal argument. 
 If the function returns a value, the return type must be specified after the arguments are defined, but before the scope.
 The scope contains the functions code. It begins at `{` and ends at `}`.
-Use the `return` keyword to return from the function, and if you are returning a value, it is followed by the variable name. 
+Use the `return` keyword to return from the function, and if you are returning a value, it is followed by that value.
 
 Below is an implementation of a simple adder function.
 

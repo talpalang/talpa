@@ -11,7 +11,8 @@ Below is an implementation of a simple adder function.
 
 ```
 fn add(a int, b int) int {
-    return a + b
+    let c = a + b
+    return c
 }
 ```
 

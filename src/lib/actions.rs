@@ -1,0 +1,49 @@
+use super::*;
+
+#[derive(Debug)]
+pub struct Actions {
+  pub list: Vec<Action>,
+}
+
+impl Actions {
+  pub fn empty() -> Self {
+    Self { list: vec![] }
+  }
+}
+
+enum ParseActionsState {
+  Nothing,
+}
+
+pub struct ParseActions<'a> {
+  p: &'a mut Parser,
+  res: Actions,
+  state: ParseActionsState,
+}
+
+impl<'a> ParseActions<'a> {
+  pub fn start(p: &'a mut Parser) -> Result<Actions, ParsingError> {
+    let mut s = Self {
+      p,
+      res: Actions::empty(),
+      state: ParseActionsState::Nothing,
+    };
+    s.parse()?;
+    Ok(s.res)
+  }
+  fn parse(&mut self) -> Result<(), ParsingError> {
+    while let Some(c) = self.p.next_char() {
+      match self.state {
+        ParseActionsState::Nothing => match c {
+          '}' => return Ok(()),
+          _ if legal_name_char(c) => {
+            let action = ParseAction::start(self.p, true, ActionToExpect::ActionInBody)?;
+            self.res.list.push(action);
+          }
+          _ => return self.p.unexpected_char(),
+        },
+      }
+    }
+    Ok(())
+  }
+}

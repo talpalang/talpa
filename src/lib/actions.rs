@@ -35,10 +35,18 @@ impl<'a> ParseActions<'a> {
     while let Some(c) = self.p.next_char() {
       match self.state {
         ParseActionsState::Nothing => match c {
+          '\t' | '\n' | ' ' => {
+            // Ignore these chars
+          }
           '}' => return Ok(()),
           _ if legal_name_char(c) => {
             let action = ParseAction::start(self.p, true, ActionToExpect::ActionInBody)?;
             self.res.list.push(action);
+
+            if let None = self.p.next_while("\n\t ") {
+              return self.p.unexpected_eof();
+            }
+            self.p.index -= 1;
           }
           _ => return self.p.unexpected_char(),
         },

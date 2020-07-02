@@ -132,7 +132,7 @@ impl Parser {
           // check for end line
           if next == &nl {
             // new line detected (end of comment)
-            break
+            return self.next_char();
           }
         }
       } else if letter == &ast {

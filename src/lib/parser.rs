@@ -108,15 +108,12 @@ impl Parser {
     Ok(parser)
   }
   pub fn next_char(&mut self) -> Option<char> {
-    // get next
     let letter = *self.contents.get(self.index)? as char;
 
-    // define forward slash, newline & astrix
     let fs = '/' as u8;
     let nl = '\n' as u8;
     let ast = '*' as u8;
 
-    // increase index
     self.index += 1;
 
     // check for forward slash
@@ -129,9 +126,8 @@ impl Parser {
         loop {
           let next = self.contents.get(self.index)?;
           self.index += 1;
-          // check for end line
+          // check for newline (end of comment)
           if next == &nl {
-            // new line detected (end of comment)
             return self.next_char();
           }
         }

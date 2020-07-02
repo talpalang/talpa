@@ -108,9 +108,45 @@ impl Parser {
     Ok(parser)
   }
   pub fn next_char(&mut self) -> Option<char> {
-    let letter = self.contents.get(self.index)?;
+    let letter = *self.contents.get(self.index)? as char;
     self.index += 1;
-    Some(*letter as char)
+
+    // check for the start of a comment
+    if letter != '/' {
+      return Some(letter);
+    }
+
+    // check for next forward slash
+    match *self.contents.get(self.index)? as char {
+      '/' => {
+        // detected single line comment
+        loop {
+          let next = *self.contents.get(self.index)? as char;
+          self.index += 1;
+          // check for newline (end of comment)
+          if next == '\n' {
+            return self.next_char();
+          }
+        }
+      }
+      '*' => {
+        // detected multi-line comment
+        loop {
+          let next = *self.contents.get(self.index)? as char;
+          self.index += 1;
+          if next == '*' {
+            // * detected
+            let last = *self.contents.get(self.index)? as char;
+            if last == '/' {
+              // */ detected
+              self.index += 1;
+              return self.next_char();
+            }
+          }
+        }
+      }
+      _ => return Some(letter),
+    }
   }
   fn seek_next_char(&mut self) -> Option<char> {
     let letter = self.contents.get(self.index)?;

@@ -12,8 +12,8 @@ impl Parser {
   pub fn error<T>(&self, error_type: ParsingErrorType) -> Result<T, ParsingError> {
     self.custom_error(error_type, None)
   }
-  pub fn unexpected_char<T>(&self) -> Result<T, ParsingError> {
-    self.error(ParsingErrorType::UnexpectedChar)
+  pub fn unexpected_char<T>(&self, c: char) -> Result<T, ParsingError> {
+    self.error(ParsingErrorType::UnexpectedChar(c))
   }
   pub fn unexpected_eof<T>(&self) -> Result<T, ParsingError> {
     self.error(ParsingErrorType::UnexpectedEOF)
@@ -190,7 +190,7 @@ impl Parser {
   fn expect_next(&mut self, c: char) -> Result<(), ParsingError> {
     match self.next_char() {
       Some(v) if v == c => Ok(()),
-      Some(_) => self.error(ParsingErrorType::UnexpectedChar),
+      Some(c) => self.error(ParsingErrorType::UnexpectedChar(c)),
       None => self.error(ParsingErrorType::UnexpectedEOF),
     }
   }

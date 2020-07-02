@@ -247,7 +247,7 @@ impl<'a> ParseAction<'a> {
           detected_action = DetectedAction::Assignment(true);
           break;
         }
-        _ => return self.p.unexpected_char(),
+        c => return self.p.unexpected_char(c),
       }
       next_char = self.p.next_char();
     }
@@ -282,8 +282,8 @@ impl<'a> ParseAction<'a> {
     if check_for_function_open_sign {
       match self.p.next_char() {
         Some('(') => {} // This is what we exect. return no error
+        Some(c) => return self.p.unexpected_char(c),
         None => return self.p.unexpected_eof(),
-        _ => return self.p.unexpected_char(),
       }
     }
 
@@ -294,8 +294,8 @@ impl<'a> ParseAction<'a> {
 
     match self.p.next_while(" \t\n") {
       Some(')') => {} // This is what we exect. return no error
+      Some(c) => return self.p.unexpected_char(c),
       None => return self.p.unexpected_eof(),
-      _ => return self.p.unexpected_char(),
     }
 
     Ok(res)
@@ -310,7 +310,8 @@ impl<'a> ParseAction<'a> {
     if check_for_equal_sign {
       match self.p.next_while(" \t\n") {
         Some('=') => {}
-        _ => return self.p.unexpected_char(),
+        Some(c) => return self.p.unexpected_char(c),
+        None => return self.p.unexpected_eof(),
       }
     }
 
@@ -351,7 +352,9 @@ impl<'a> ParseAction<'a> {
       ];
       let match_result = self.p.try_match(to_match);
       if let None = match_result {
-        return self.p.unexpected_char();
+        return self
+          .p
+          .unexpected_char(*self.p.contents.get(self.p.index).unwrap() as char);
       }
 
       if match_result.unwrap() == statics::CONST_KEYWORD {
@@ -379,7 +382,7 @@ impl<'a> ParseAction<'a> {
             self.p.index -= 1;
             break;
           }
-          _ => return self.p.unexpected_char(),
+          c => return self.p.unexpected_char(c),
         }
       } else {
         return self.p.unexpected_eof();
@@ -400,7 +403,7 @@ impl<'a> ParseAction<'a> {
     // Check for the = symbol
     match next_char {
       Some('=') => {}
-      Some(_) => return self.p.unexpected_char(),
+      Some(c) => return self.p.unexpected_char(c),
       None => return self.p.unexpected_eof(),
     }
 

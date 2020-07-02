@@ -48,7 +48,7 @@ impl<'a> ParseActions<'a> {
             }
             self.p.index -= 1;
           }
-          _ => return self.p.unexpected_char(),
+          c => return self.p.unexpected_char(c),
         },
       }
     }

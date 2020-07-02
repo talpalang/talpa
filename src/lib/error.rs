@@ -56,7 +56,7 @@ impl Display for ParsingError {
 pub enum ParsingErrorType {
   IncompletedArgument,
   UnexpectedEOF,
-  UnexpectedChar,
+  UnexpectedChar(char),
   UnexpectedResult,
   InvalidNameChar,
   Custom(&'static str),
@@ -67,7 +67,7 @@ impl Display for ParsingErrorType {
     match self {
       Self::IncompletedArgument => write!(f, "Incompletted argument"),
       Self::UnexpectedEOF => write!(f, "Unexpected EOF"),
-      Self::UnexpectedChar => write!(f, "Unexpected char"),
+      Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
       Self::Custom(error) => write!(f, "{}", error),

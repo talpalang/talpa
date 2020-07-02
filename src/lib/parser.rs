@@ -150,7 +150,7 @@ impl Parser {
       }
     }
 
-    let mut char_count: usize = 1;
+    let mut char_count: usize = 0;
     while let Some(c) = self.next_char() {
       let mut new_options_vec: Vec<&str> = vec![];
       for option in options_vec {
@@ -192,7 +192,7 @@ impl Parser {
     }
 
     // Reset the index if we havent found the requested item
-    self.index -= char_count;
+    self.index -= char_count + 1;
     None
   }
   fn expect_next(&mut self, c: char) -> Result<(), ParsingError> {

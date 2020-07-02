@@ -23,8 +23,8 @@ This roadmap is used to track the progress on the project. If you add a feature 
       * [ ]  Actions
         * [ ]  Variables
           * [x]  Keyword and name `let a`, `const a`
-          * [ ]  Variable type `let a: string`
-          * [ ]  assignment `let foo = "bar"` or `let foo = bar()`
+          * [x]  Variable type `let a: string`
+          * [x]  assignment `let foo = "bar"` or `let foo = bar()`
         * [ ]  Function
           * [x]  default `foo()`
           * [ ]  arguments `foo(bar, "baz")`

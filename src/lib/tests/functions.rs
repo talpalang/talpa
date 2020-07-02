@@ -60,14 +60,15 @@ fn test_function_with_arg_and_result() {
 }
 
 #[test]
-fn test_function_call() {
+fn test_function_call_without_args() {
   parse_str(
     r#"
-                fn test() {}
-                fn test_1() {
-                    test()
-                }
-            "#,
+      fn test() {
+      }
+      fn main() {
+        test()
+      }
+    "#,
   );
 }
 

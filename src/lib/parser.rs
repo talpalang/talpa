@@ -147,7 +147,7 @@ impl Parser {
       }
     }
 
-    let mut char_count: usize = 0;
+    let mut char_count: usize = 1;
     while let Some(c) = self.next_char() {
       let mut new_options_vec: Vec<&'static str> = vec![];
       for option in options_vec {

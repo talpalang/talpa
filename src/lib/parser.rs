@@ -111,9 +111,10 @@ impl Parser {
     // get next
     let letter = self.contents.get(self.index)?;
 
-    // define forward slash & newline
+    // define forward slash, newline & astrix
     let fs: u8 = '/' as u8;
     let nl: u8 = '\n' as u8;
+    let ast: u8 = '*' as u8;
 
     // increase index
     self.index += 1;
@@ -123,8 +124,8 @@ impl Parser {
       // check for next forward slash
       let next = self.contents.get(self.index)?;
       if next == &fs {
-        // detected is single line comment
-        // loop until over (comments are not parsed)
+        // detected single line comment
+        // loop until newline (comments are not parsed)
         loop {
           let next = self.contents.get(self.index)?;
           self.index += 1;
@@ -134,8 +135,22 @@ impl Parser {
             break
           }
         }
-      } else /*if*/ {
-        // TODO: add multi-line comment support
+      } else if letter == &ast {
+        // detected multi-line comment
+        // loop until closed (comments are not parsed)
+        loop {
+          let next = self.contents.get(self.index)?;
+          self.index += 1;
+          if next == &ast {
+            // * detected
+            let last = self.contents.get(self.index)?;
+            if last == &ast {
+              // */ detected
+              self.index += 1;
+              break
+            }
+          }
+        }
       }
     }
     Some(*letter as char)

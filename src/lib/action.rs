@@ -6,6 +6,7 @@ pub enum Action {
   Return(Option<Box<Action>>),
   Assigment(ActionAssigment),
   FunctionCall(ActionFunctionCall),
+  VarRef(String),
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +64,7 @@ enum ParseActionState {
   Return(ParseActionStateReturn),             // return foo
   Assigment(ParseActionStateAssigment),       // foo = bar
   FunctionCall(ParseActionStateFunctionCall), // foo(bar)
+  VarRef(String),                             // foo
 }
 
 struct ParseActionStateFunctionCall {
@@ -117,12 +119,13 @@ pub enum ActionToExpect {
 }
 
 enum DetectedAction {
-  Assignment(bool), // 1. variable assgiment `foo` or `foo = bar` (The bool is to tell if we have found the =)
-  Function,         // 2. functions `foo()`
-                    // 3. inline strings `"foo"`
-                    // 4. inline numbers `1`
-                    // 5. inline arrays `[foo, bar]`
-                    // 6. inline structs `foo{bar: baz}`
+  VarRefName, // 1. Just a variable name `foo`
+  Assignment, // 2. `foo = bar`
+  Function,   // 3. functions `foo()`
+              // 4. inline strings `"foo"`
+              // 5. inline numbers `1`
+              // 6. inline arrays `[foo, bar]`
+              // 7. inline structs `foo{bar: baz}`
 }
 
 impl<'a> ParseAction<'a> {
@@ -188,42 +191,47 @@ impl<'a> ParseAction<'a> {
         arguments: meta.arguments,
       }
       .into(),
+      ParseActionState::VarRef(name) => Action::VarRef(name),
     });
     Ok(())
   }
+
   fn detect(&mut self) -> Result<(), ParsingError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
       self.p.try_match(&[
-        (statics::CONST_KEYWORD, " \t\n"),
-        (statics::LET_KEYWORD, " \t\n"),
-        (statics::RETURN_KEYWORD, "} \t\n"),
+        (Keywords::Const, " \t\n"),
+        (Keywords::Let, " \t\n"),
+        (Keywords::Return, "} \t\n"),
       ])
     } else {
+      // Matching keywords is only allowed when inside the body
       None
     };
 
     // Try to match a keyword and react to it
     if let Some(matched) = matched_res {
-      if matched == statics::CONST_KEYWORD || matched == statics::LET_KEYWORD {
-        // Go to parsing the variable
-        let var_type = if matched == statics::CONST_KEYWORD {
-          ActionVariableType::Const
-        } else {
-          ActionVariableType::Let
-        };
-        let new_var = self.parse_variable(Some(var_type))?;
-        self.commit_state(new_var)?;
-      } else if matched == statics::RETURN_KEYWORD {
-        // Go to parsing the return
-        let new_var = self.parse_return()?;
-        self.commit_state(new_var)?;
+      match matched {
+        Keywords::Const | Keywords::Let => {
+          // Go to parsing the variable
+          let var_type = if let Keywords::Const = matched {
+            ActionVariableType::Const
+          } else {
+            ActionVariableType::Let
+          };
+          let new_var = self.parse_variable(Some(var_type))?;
+          self.commit_state(new_var)?;
+        }
+        Keywords::Return => {
+          // Go to parsing the return
+          let to_commit = self.parse_return()?;
+          self.commit_state(to_commit)?;
+        }
       }
-
       return Ok(());
     }
 
     // We are in a wired state right now where a lot of things are possible like
-    // 1. variable assgiment `foo` or `foo = bar`
+    // 1. variable assgiment `foo` or `foo = bar` (the second one is not allowed when ActionToExpect is ActionInBody)
     // 2. functions `foo()`
     // 3. inline strings `"foo"`
     // 4. inline numbers `1`
@@ -233,18 +241,29 @@ impl<'a> ParseAction<'a> {
     // The code underhere will detect what the action is,
     // TODO: 2, 3, 4, 5, 6
     let mut name: Vec<u8> = vec![];
-    let mut detected_action = DetectedAction::Assignment(false);
+    let mut detected_action = DetectedAction::VarRefName;
     let mut next_char = self.p.next_char();
+    let mut name_completed = false;
+
     while let Some(c) = next_char {
       match c {
-        ' ' | '\t' | '\n' if name.len() > 0 => break,
-        _ if legal_name_char(c) => name.push(c as u8),
+        ' ' | '\t' | '\n' => {
+          if name.len() > 0 {
+            name_completed = true;
+          }
+          // Else ignore this
+        }
+        _ if legal_name_char(c) && !name_completed => name.push(c as u8),
         '(' => {
           detected_action = DetectedAction::Function;
           break;
         }
+        '}' if name_completed => {
+          self.p.index -= 1;
+          break;
+        }
         '=' => {
-          detected_action = DetectedAction::Assignment(true);
+          detected_action = DetectedAction::Assignment;
           break;
         }
         c => return self.p.unexpected_char(c),
@@ -258,8 +277,11 @@ impl<'a> ParseAction<'a> {
 
     // Do things relative to the detected action
     match detected_action {
-      DetectedAction::Assignment(found_equal_sign) => {
-        let res = self.parse_assignment(name_string, !found_equal_sign)?;
+      DetectedAction::VarRefName => {
+        self.commit_state(ParseActionState::VarRef(name_string))?;
+      }
+      DetectedAction::Assignment => {
+        let res = self.parse_assignment(name_string, true)?;
         self.commit_state(res)?;
       }
       DetectedAction::Function => {
@@ -336,7 +358,6 @@ impl<'a> ParseAction<'a> {
       }
       None => return self.p.unexpected_eof(),
     }
-
     Ok(res)
   }
   fn parse_variable(
@@ -346,10 +367,7 @@ impl<'a> ParseAction<'a> {
     let var_type = if let Some(type_) = var_type_option {
       type_
     } else {
-      let to_match = &[
-        (statics::CONST_KEYWORD, " \t\n"),
-        (statics::LET_KEYWORD, " \t\n"),
-      ];
+      let to_match = &[(Keywords::Const, " \t\n"), (Keywords::Let, " \t\n")];
       let match_result = self.p.try_match(to_match);
       if let None = match_result {
         return self
@@ -357,7 +375,7 @@ impl<'a> ParseAction<'a> {
           .unexpected_char(*self.p.contents.get(self.p.index).unwrap() as char);
       }
 
-      if match_result.unwrap() == statics::CONST_KEYWORD {
+      if let Keywords::Const = match_result.unwrap() {
         ActionVariableType::Const
       } else {
         ActionVariableType::Let

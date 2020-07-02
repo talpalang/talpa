@@ -129,27 +129,30 @@ impl Parser {
   /// The second string for the options array is for checking if the matched value has a certen surfix
   /// The next char after the matched value will be checked against it
   /// For example surfix "abc" will match the following matched string surfix: 'a', 'b' or 'c'
-  pub fn try_match(&mut self, options: &[(&'static str, &'static str)]) -> Option<&'static str> {
+  pub fn try_match<'a, T>(&mut self, options: &[(T, &'static str)]) -> Option<T>
+  where
+    T: Into<&'a str> + Copy,
+  {
     if options.len() == 0 {
       return None;
     }
 
-    let mut surfix_map: HashMap<&'static str, &'static str> = HashMap::with_capacity(options.len());
-    let mut options_vec: Vec<&'static str> = vec![];
-    for option in options {
-      if option.0.len() == 0 {
+    let mut surfix_map: HashMap<&'a str, &'static str> = HashMap::with_capacity(options.len());
+    let mut options_vec: Vec<&str> = vec![];
+    for option in options.iter() {
+      if option.0.into().len() == 0 {
         continue;
       }
-      options_vec.push(option.0);
+      options_vec.push(&option.0.into());
 
       if option.1.len() > 0 {
-        surfix_map.insert(option.0, option.1);
+        surfix_map.insert(option.0.into(), option.1);
       }
     }
 
     let mut char_count: usize = 0;
     while let Some(c) = self.next_char() {
-      let mut new_options_vec: Vec<&'static str> = vec![];
+      let mut new_options_vec: Vec<&str> = vec![];
       for option in options_vec {
         if option.len() <= char_count {
           continue;
@@ -157,7 +160,7 @@ impl Parser {
         match option.as_bytes().get(char_count) {
           Some(found_char) if *found_char as char == c => {
             if option.len() != char_count + 1 {
-              new_options_vec.push(option);
+              new_options_vec.push(&option);
               continue;
             }
 
@@ -171,7 +174,12 @@ impl Parser {
               }
             }
 
-            return Some(option);
+            for opt in options {
+              if opt.0.into() == option {
+                return Some(opt.0);
+              }
+            }
+            return None;
           }
           _ => continue,
         }

@@ -13,29 +13,23 @@ This roadmap is used to track the progress on the project. If you add a feature 
    * Parsing stage 1 (Parse the code into types)
 
       * [x]  Functions
-
         * [x]  Function keyword and body detection `fn FunctionName() {}`
         * [x]  Function arguments `fn foo(bar string) {}`
         * [x]  Function response `fn foo() string {}`
       * [ ]  Types
-
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
         * [ ]  Extending types parsing `foo<bar>`
         * [ ]  Inline types `struct{}`
       * [ ]  Actions
-
         * [ ]  Variables
-
-          * [ ]  Keyword and name `let a`, `const a`
+          * [x]  Keyword and name `let a`, `const a`
           * [ ]  Variable type `let a: string`
           * [ ]  assignment `let foo = "bar"` or `let foo = bar()`
         * [ ]  Function
-
-          * [ ]  default `foo()`
+          * [x]  default `foo()`
           * [ ]  arguments `foo(bar, "baz")`
         * [ ]  Static actions
-
-          * [ ]  `return`
+          * [x]  `return`
           * [ ]  `loop {}`
           * [ ]  `while true {}`
           * [ ]  `for foo in bar {}`
@@ -43,18 +37,15 @@ This roadmap is used to track the progress on the project. If you add a feature 
    * Parsing stage 2 verifying the data and making it more accessible
 
       * [ ]  Validating all types
-
         * [ ]  User created types
         * [ ]  Buildin types
       * [ ]  List of actions
-
         * [ ]  Make it impossible to set variable without using it
 
    * Documentation
 
       * [x]  Code examples for the currently support language features in tests
       * [x]  A Markdown file with code examples (see [docs](docs/README.md))
-
         * [x]  What is currently supported (see [docs](docs/README.md))
         * [x]  List of language features goals like how should inline function work etc.. (see [dev plans](docs/README.md#maintainer-development-plans))
 

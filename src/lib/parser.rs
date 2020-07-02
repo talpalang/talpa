@@ -109,7 +109,7 @@ impl Parser {
   }
   pub fn next_char(&mut self) -> Option<char> {
     // get next
-    let letter = self.contents.get(self.index)?;
+    let letter = *self.contents.get(self.index)? as char;
 
     // define forward slash, newline & astrix
     let fs = '/' as u8;

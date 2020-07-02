@@ -192,7 +192,7 @@ impl Parser {
     }
 
     // Reset the index if we havent found the requested item
-    self.index -= char_count;
+    self.index -= char_count + 1;
     None
   }
   fn expect_next(&mut self, c: char) -> Result<(), ParsingError> {

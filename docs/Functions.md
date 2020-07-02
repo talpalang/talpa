@@ -17,3 +17,17 @@ fn add(a int, b int) int {
 ```
 
 As you can see, we take two arguments (a and b) that must both be integers. We define the return type (int). We then return the result of `a + b` using the return keyword inside the scope. 
+
+We can call any function we’ve defined by typing its name followed by a set of parentheses. 
+Any arguments we wish to parse are placed inside the parentheses.
+For example, in our main function, we may wish to use our `add` function to add 2 and 4.
+
+```
+fn main() {
+    let result = add(2, 4)
+}
+```
+
+This code calls our `add` function, using 2 as the value for the `a` argument and 4 as the value for the `b` argument. 
+The `add` function then computes and returns `c` which is now equal to `a + b`. 
+Finally, `result` is assigned to the returned value (which should be 6).

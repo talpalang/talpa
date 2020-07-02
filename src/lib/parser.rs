@@ -112,9 +112,9 @@ impl Parser {
     let letter = self.contents.get(self.index)?;
 
     // define forward slash, newline & astrix
-    let fs: u8 = '/' as u8;
-    let nl: u8 = '\n' as u8;
-    let ast: u8 = '*' as u8;
+    let fs = '/' as u8;
+    let nl = '\n' as u8;
+    let ast = '*' as u8;
 
     // increase index
     self.index += 1;

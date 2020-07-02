@@ -6,6 +6,7 @@ pub struct Parser {
   pub index: usize,
   pub contents: Vec<u8>,
   pub functions: Vec<Function>,
+  pub global_vars: Vec<Variable>,
 }
 
 impl Parser {
@@ -103,6 +104,7 @@ impl Parser {
       index: 0,
       contents: contents.into(),
       functions: vec![],
+      global_vars: vec![],
     };
     parser.parse_nothing()?;
     Ok(parser)
@@ -231,25 +233,30 @@ impl Parser {
     self.index -= char_count + 1;
     None
   }
-  fn expect_next(&mut self, c: char) -> Result<(), ParsingError> {
-    match self.next_char() {
-      Some(v) if v == c => Ok(()),
-      Some(c) => self.error(ParsingErrorType::UnexpectedChar(c)),
-      None => self.error(ParsingErrorType::UnexpectedEOF),
-    }
-  }
   fn parse_nothing(&mut self) -> Result<(), ParsingError> {
-    while let Some(c) = self.next_char() {
-      match c {
-        'f' => {
-          self.expect_next('n')?;
-          let new_func = ParseFunction::start(self)?;
-          self.functions.push(new_func);
-        }
-        _ => {}
-      };
+    if let None = self.next_while(" \n\t") {
+      return Ok(());
     }
-    Ok(())
+    self.index -= 1;
+    match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
+      Some(Keywords::Const) => {
+        let parsed_variable = parse_var(self, Some(VarType::Const))?;
+        self.global_vars.push(parsed_variable);
+        Ok(())
+      }
+      Some(Keywords::Fn) => {
+        let parsed_function = ParseFunction::start(self)?;
+        self.functions.push(parsed_function);
+        Ok(())
+      }
+      _ => {
+        if let Some(c) = self.next_char() {
+          self.unexpected_char(c)
+        } else {
+          self.unexpected_eof()
+        }
+      }
+    }
   }
 
   /*

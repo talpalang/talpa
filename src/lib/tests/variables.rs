@@ -29,7 +29,7 @@ fn test_variable_strings_with_backslashes() {
 }
 
 #[test]
-fn test_variable_global_let() {
+fn test_variable_global_let_fails() {
   parse_str_fail(
     r#"
                 let foo = 0
@@ -38,7 +38,7 @@ fn test_variable_global_let() {
 }
 
 #[test]
-fn test_variable_starts_with_number() {
+fn test_variable_starts_with_number_fails() {
   // variables should never start with a number
   parse_str_fail(
     r#"

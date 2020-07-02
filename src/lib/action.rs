@@ -2,31 +2,12 @@ use super::*;
 
 #[derive(Debug)]
 pub enum Action {
-  Variable(ActionVariable),
+  Variable(Variable),
   Return(Option<Box<Action>>),
   Assigment(ActionAssigment),
   FunctionCall(ActionFunctionCall),
   VarRef(String),
-}
-
-#[derive(Debug, Clone)]
-enum ActionVariableType {
-  Const, // inmutatable
-  Let,   // mutatable
-}
-
-#[derive(Debug)]
-pub struct ActionVariable {
-  name: String,
-  var_type: ActionVariableType,
-  type_: Option<Type>,
-  action: Box<Action>,
-}
-
-impl Into<Action> for ActionVariable {
-  fn into(self) -> Action {
-    Action::Variable(self)
-  }
+  StaticString(String_),
 }
 
 #[derive(Debug)]
@@ -59,15 +40,14 @@ pub struct ParseAction<'a> {
   action_to_expect: ActionToExpect,
 }
 
-enum ParseActionState {
-  Var(ParseActionStateVar),                   // let foo = bar
+pub enum ParseActionState {
   Return(ParseActionStateReturn),             // return foo
   Assigment(ParseActionStateAssigment),       // foo = bar
   FunctionCall(ParseActionStateFunctionCall), // foo(bar)
   VarRef(String),                             // foo
 }
 
-struct ParseActionStateFunctionCall {
+pub struct ParseActionStateFunctionCall {
   name: String,
   arguments: Vec<Action>,
 }
@@ -78,7 +58,7 @@ impl Into<ParseActionState> for ParseActionStateFunctionCall {
   }
 }
 
-struct ParseActionStateAssigment {
+pub struct ParseActionStateAssigment {
   name: String,
   action: Option<Action>,
 }
@@ -89,26 +69,13 @@ impl Into<ParseActionState> for ParseActionStateAssigment {
   }
 }
 
-struct ParseActionStateReturn {
+pub struct ParseActionStateReturn {
   action: Option<Action>, // The value to return
 }
 
 impl Into<ParseActionState> for ParseActionStateReturn {
   fn into(self) -> ParseActionState {
     ParseActionState::Return(self)
-  }
-}
-
-struct ParseActionStateVar {
-  var_type: ActionVariableType, // What kind of variable is this a const or a let
-  name: Vec<u8>,                // The variable name
-  type_: Option<Type>,          // The variable type
-  action: Option<Action>,       // The value set to the variable
-}
-
-impl Into<ParseActionState> for ParseActionStateVar {
-  fn into(self) -> ParseActionState {
-    ParseActionState::Var(self)
   }
 }
 
@@ -151,21 +118,6 @@ impl<'a> ParseAction<'a> {
   }
   fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), ParsingError> {
     self.res = Some(match state.into() {
-      ParseActionState::Var(meta) => {
-        if let None = meta.action {
-          return self
-            .p
-            .error(ParsingErrorType::Custom("Missing variable assignment"));
-        }
-
-        ActionVariable {
-          name: String::from_utf8(meta.name.clone()).unwrap(),
-          var_type: meta.var_type.clone(),
-          type_: meta.type_,
-          action: Box::new(meta.action.unwrap()),
-        }
-        .into()
-      }
       ParseActionState::Return(meta) => {
         let mut return_action: Option<Box<Action>> = None;
         if let Some(action) = meta.action {
@@ -214,18 +166,19 @@ impl<'a> ParseAction<'a> {
         Keywords::Const | Keywords::Let => {
           // Go to parsing the variable
           let var_type = if let Keywords::Const = matched {
-            ActionVariableType::Const
+            VarType::Const
           } else {
-            ActionVariableType::Let
+            VarType::Let
           };
-          let new_var = self.parse_variable(Some(var_type))?;
-          self.commit_state(new_var)?;
+          let new_var = parse_var(self.p, Some(var_type))?;
+          self.res = Some(new_var.into());
         }
         Keywords::Return => {
           // Go to parsing the return
           let to_commit = self.parse_return()?;
           self.commit_state(to_commit)?;
         }
+        Keywords::Fn => return self.p.error(ParsingErrorType::UnexpectedResult),
       }
       return Ok(());
     }
@@ -247,6 +200,12 @@ impl<'a> ParseAction<'a> {
 
     while let Some(c) = next_char {
       match c {
+        '"' if name.len() == 0 => {
+          // Parse a static string
+          let parsed = parse_static_str(self.p)?;
+          self.res = Some(parsed.into());
+          return Ok(());
+        }
         ' ' | '\t' | '\n' => {
           if name.len() > 0 {
             name_completed = true;
@@ -255,14 +214,17 @@ impl<'a> ParseAction<'a> {
         }
         _ if legal_name_char(c) && !name_completed => name.push(c as u8),
         '(' => {
+          // Detected start of a function call
           detected_action = DetectedAction::Function;
           break;
         }
         '}' if name_completed => {
+          // Detected end of function
           self.p.index -= 1;
           break;
         }
         '=' => {
+          // Detected variable assigment
           detected_action = DetectedAction::Assignment;
           break;
         }
@@ -358,77 +320,6 @@ impl<'a> ParseAction<'a> {
       }
       None => return self.p.unexpected_eof(),
     }
-    Ok(res)
-  }
-  fn parse_variable(
-    &mut self,
-    var_type_option: Option<ActionVariableType>, // If set we assume the let or const is already parsed
-  ) -> Result<ParseActionStateVar, ParsingError> {
-    let var_type = if let Some(type_) = var_type_option {
-      type_
-    } else {
-      let to_match = &[(Keywords::Const, " \t\n"), (Keywords::Let, " \t\n")];
-      let match_result = self.p.try_match(to_match);
-      if let None = match_result {
-        return self
-          .p
-          .unexpected_char(*self.p.contents.get(self.p.index).unwrap() as char);
-      }
-
-      if let Keywords::Const = match_result.unwrap() {
-        ActionVariableType::Const
-      } else {
-        ActionVariableType::Let
-      }
-    };
-
-    let mut res = ParseActionStateVar {
-      name: vec![],
-      var_type,
-      type_: None,
-      action: None,
-    };
-
-    // Parse name
-    let mut next_char = self.p.next_while(" \t\n");
-    loop {
-      if let Some(c) = next_char {
-        match c {
-          _ if legal_name_char(c) => res.name.push(c as u8),
-          ' ' | '\t' | '\n' => break,
-          ':' | '=' => {
-            self.p.index -= 1;
-            break;
-          }
-          c => return self.p.unexpected_char(c),
-        }
-      } else {
-        return self.p.unexpected_eof();
-      }
-      next_char = self.p.next_char();
-    }
-
-    // Parse the variable type if set
-    next_char = self.p.next_while(" \t\n");
-    if let None = next_char {
-      return self.p.unexpected_eof();
-    }
-    if next_char.unwrap() == ':' {
-      res.type_ = Some(ParseType::start(self.p, true)?);
-      next_char = self.p.next_while(" \t\n");
-    }
-
-    // Check for the = symbol
-    match next_char {
-      Some('=') => {}
-      Some(c) => return self.p.unexpected_char(c),
-      None => return self.p.unexpected_eof(),
-    }
-
-    // Parse the action after the action after the =
-    let parsed_action = ParseAction::start(self.p, false, ActionToExpect::Assignment)?;
-    res.action = Some(parsed_action);
-
     Ok(res)
   }
 }

@@ -109,47 +109,44 @@ impl Parser {
   }
   pub fn next_char(&mut self) -> Option<char> {
     let letter = *self.contents.get(self.index)? as char;
-
-    let fs = '/' as u8;
-    let nl = '\n' as u8;
-    let ast = '*' as u8;
-
     self.index += 1;
 
-    // check for forward slash
-    if letter == &fs {
-      // check for next forward slash
-      let next = self.contents.get(self.index)?;
-      if next == &fs {
+    // check for the start of a comment
+    if letter != '/' {
+      return Some(letter);
+    }
+
+    // check for next forward slash
+    match *self.contents.get(self.index)? as char {
+      '/' => {
         // detected single line comment
-        // loop until newline (comments are not parsed)
         loop {
-          let next = self.contents.get(self.index)?;
+          let next = *self.contents.get(self.index)? as char;
           self.index += 1;
           // check for newline (end of comment)
-          if next == &nl {
+          if next == '\n' {
             return self.next_char();
           }
         }
-      } else if letter == &ast {
+      }
+      '*' => {
         // detected multi-line comment
-        // loop until closed (comments are not parsed)
         loop {
-          let next = self.contents.get(self.index)?;
+          let next = *self.contents.get(self.index)? as char;
           self.index += 1;
-          if next == &ast {
+          if next == '*' {
             // * detected
-            let last = self.contents.get(self.index)?;
-            if last == &ast {
+            let last = *self.contents.get(self.index)? as char;
+            if last == '/' {
               // */ detected
               self.index += 1;
-              break
+              return self.next_char();
             }
           }
         }
       }
+      _ => return Some(letter),
     }
-    Some(*letter as char)
   }
   fn seek_next_char(&mut self) -> Option<char> {
     let letter = self.contents.get(self.index)?;

@@ -108,8 +108,36 @@ impl Parser {
     Ok(parser)
   }
   pub fn next_char(&mut self) -> Option<char> {
+    // get next
     let letter = self.contents.get(self.index)?;
+
+    // define forward slash & newline
+    let fs: u8 = '/' as u8;
+    let nl: u8 = '\n' as u8;
+
+    // increase index
     self.index += 1;
+
+    // check for forward slash
+    if letter == &fs {
+      // check for next forward slash
+      let next = self.contents.get(self.index)?;
+      if next == &fs {
+        // detected is single line comment
+        // loop until over (comments are not parsed)
+        loop {
+          let next = self.contents.get(self.index)?;
+          self.index += 1;
+          // check for end line
+          if next == &nl {
+            // new line detected (end of comment)
+            break
+          }
+        }
+      } else /*if*/ {
+        // TODO: add multi-line comment support
+      }
+    }
     Some(*letter as char)
   }
   fn seek_next_char(&mut self) -> Option<char> {

@@ -1,3 +1,4 @@
+mod comments;
 mod functions;
 mod general;
 mod variables;

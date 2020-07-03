@@ -24,7 +24,7 @@ pub fn parse_var<'a>(
   p: &'a mut Parser,
   var_type_option: Option<VarType>,
 ) -> Result<Variable, ParsingError> {
-  let mut name: Vec<u8> = vec![];
+  let mut name = NameBuilder::new();
   let mut data_type: Option<Type> = None;
 
   let var_type = if let Some(type_) = var_type_option {
@@ -48,7 +48,7 @@ pub fn parse_var<'a>(
   loop {
     if let Some(c) = next_char {
       match c {
-        _ if legal_name_char(c) => name.push(c as u8),
+        _ if legal_name_char(c) => name.push(c),
         ' ' | '\t' | '\n' => break,
         ':' | '=' => {
           p.index -= 1;
@@ -85,7 +85,7 @@ pub fn parse_var<'a>(
   Ok(Variable {
     var_type,
     data_type,
-    name: String::from_utf8(name.to_vec()).unwrap(),
+    name: name.to_string(p)?,
     action: Box::new(action),
   })
 }

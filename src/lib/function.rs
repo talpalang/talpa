@@ -19,12 +19,12 @@ impl Function {
 
 #[derive(Debug)]
 struct ParseFunctionStateNothing {
-  function_name: Option<Vec<u8>>,
+  function_name: Option<NameBuilder>,
 }
 
 #[derive(Debug)]
 struct ParseFunctionStateArg {
-  name: Vec<u8>,
+  name: NameBuilder,
   type_: Option<Type>,
   parsing_name: bool,
 }
@@ -32,7 +32,7 @@ struct ParseFunctionStateArg {
 impl ParseFunctionStateArg {
   fn new() -> Self {
     Self {
-      name: vec![],
+      name: NameBuilder::new(),
       type_: None,
       parsing_name: true,
     }
@@ -54,12 +54,12 @@ pub struct ParseFunction<'a> {
 }
 
 impl<'a> ParseFunction<'a> {
-  fn change_state(&mut self, to: ParseFunctionState) {
+  fn change_state(&mut self, to: ParseFunctionState) -> Result<(), ParsingError> {
     // Check if the current state has data and if so commit it to the response
     match &self.state {
       ParseFunctionState::Nothing(info) => {
         if let Some(name) = &info.function_name {
-          self.res.name = Some(String::from_utf8(name.clone()).unwrap());
+          self.res.name = Some(name.to_string(self.p)?);
         }
       }
       ParseFunctionState::Arg(info) if !info.parsing_name && info.name.len() > 0 => {
@@ -67,7 +67,7 @@ impl<'a> ParseFunction<'a> {
           self
             .res
             .args
-            .push((String::from_utf8(info.name.clone()).unwrap(), type_.clone()));
+            .push((info.name.to_string(self.p)?, type_.clone()));
         }
       }
       ParseFunctionState::Arg(_) => {}
@@ -76,6 +76,7 @@ impl<'a> ParseFunction<'a> {
     }
 
     self.state = to;
+    Ok(())
   }
   pub fn start(p: &'a mut Parser) -> Result<Function, ParsingError> {
     let mut s = Self {
@@ -98,13 +99,16 @@ impl<'a> ParseFunction<'a> {
               return self.p.error(ParsingErrorType::InvalidNameChar);
             }
           }
-          '(' => self.change_state(ParseFunctionState::Arg(ParseFunctionStateArg::new())), // end of function name, start parsing arguments
+          '(' => {
+            self.change_state(ParseFunctionState::Arg(ParseFunctionStateArg::new()))?;
+            // end of function name, start parsing arguments
+          }
           c if legal_name_char(c) => {
             // Parsing the function name
             if let Some(function_name) = &mut meta.function_name {
-              function_name.push(c as u8);
+              function_name.push(c);
             } else {
-              meta.function_name = Some(vec![c as u8])
+              meta.function_name = Some(NameBuilder::new_with_char(c));
             }
           }
           _ => {
@@ -125,17 +129,17 @@ impl<'a> ParseFunction<'a> {
             }
             _ => {
               // End of argument
-              self.change_state(ParseFunctionState::Response);
+              self.change_state(ParseFunctionState::Response)?;
             }
           }, // end of argument, start parsing response
           c if legal_name_char(c) => {
             if meta.parsing_name {
               // Parsing the function name
-              meta.name.push(c as u8);
+              meta.name.push(c);
             } else {
               // Parse the argument type
               meta.type_ = Some(ParseType::start(self.p, true)?);
-              self.change_state(ParseFunctionState::AfterArg);
+              self.change_state(ParseFunctionState::AfterArg)?;
             }
           }
           _ => {
@@ -146,10 +150,10 @@ impl<'a> ParseFunction<'a> {
         ParseFunctionState::AfterArg => match c {
           '\t' | '\n' | ' ' => {}
           ')' => {
-            self.change_state(ParseFunctionState::Response);
+            self.change_state(ParseFunctionState::Response)?;
           }
           ',' => {
-            self.change_state(ParseFunctionState::Arg(ParseFunctionStateArg::new()));
+            self.change_state(ParseFunctionState::Arg(ParseFunctionStateArg::new()))?;
           }
           _ => {
             // This is not what we are searching for

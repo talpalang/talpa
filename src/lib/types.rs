@@ -14,13 +14,7 @@ impl Type {
 }
 
 struct ParseTypeStateTypeName {
-  name: Vec<u8>,
-}
-
-impl ParseTypeStateTypeName {
-  fn new() -> Self {
-    Self { name: vec![] }
-  }
+  name: NameBuilder,
 }
 
 enum ParseTypeState {
@@ -41,7 +35,9 @@ impl<'a> ParseType<'a> {
     let mut s = Self {
       p,
       res: Type::empty(),
-      state: ParseTypeState::TypeName(ParseTypeStateTypeName::new()),
+      state: ParseTypeState::TypeName(ParseTypeStateTypeName {
+        name: NameBuilder::new(),
+      }),
     };
     s.parse()?;
     Ok(s.res)
@@ -51,11 +47,11 @@ impl<'a> ParseType<'a> {
       match &mut self.state {
         ParseTypeState::TypeName(meta) => match c {
           _ if legal_name_char(c) => {
-            meta.name.push(c as u8);
+            meta.name.push(c);
           }
           _ => {
             self.p.index -= 1;
-            self.res.name = String::from_utf8(meta.name.clone()).unwrap();
+            self.res.name = meta.name.to_string(self.p)?;
             return Ok(());
           }
         },

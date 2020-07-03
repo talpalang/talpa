@@ -1,5 +1,40 @@
+use super::*;
+
 pub static VALID_NAME_CHARS: &'static str =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
+
+#[derive(Debug)]
+pub struct NameBuilder {
+  buff: Vec<u8>,
+}
+
+impl NameBuilder {
+  pub fn new() -> Self {
+    Self { buff: vec![] }
+  }
+  pub fn new_with_char(first_char: char) -> Self {
+    Self {
+      buff: vec![first_char as u8],
+    }
+  }
+  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, ParsingError> {
+    match String::from_utf8(self.buff.clone()) {
+      Ok(parsed_string) => match parsed_string.get(0..1) {
+        Some(v) if "1234567890".contains(v) => {
+          p.error(ParsingErrorType::Custom("name cannot start with a number"))
+        }
+        _ => Ok(parsed_string),
+      },
+      Err(_) => p.error(ParsingErrorType::Custom("Invalid utf8 string")),
+    }
+  }
+  pub fn len(&self) -> usize {
+    self.buff.len()
+  }
+  pub fn push(&mut self, value: char) {
+    self.buff.push(value as u8);
+  }
+}
 
 pub fn legal_name_char(c: char) -> bool {
   VALID_NAME_CHARS.contains(c)

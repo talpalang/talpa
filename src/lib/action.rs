@@ -193,7 +193,7 @@ impl<'a> ParseAction<'a> {
     //
     // The code underhere will detect what the action is,
     // TODO: 2, 3, 4, 5, 6
-    let mut name: Vec<u8> = vec![];
+    let mut name = NameBuilder::new();
     let mut detected_action = DetectedAction::VarRefName;
     let mut next_char = self.p.next_char();
     let mut name_completed = false;
@@ -212,7 +212,7 @@ impl<'a> ParseAction<'a> {
           }
           // Else ignore this
         }
-        _ if legal_name_char(c) && !name_completed => name.push(c as u8),
+        _ if legal_name_char(c) && !name_completed => name.push(c),
         '(' => {
           // Detected start of a function call
           detected_action = DetectedAction::Function;
@@ -235,7 +235,7 @@ impl<'a> ParseAction<'a> {
     if let None = next_char {
       return self.p.unexpected_eof();
     }
-    let name_string = String::from_utf8(name).unwrap();
+    let name_string = name.to_string(self.p)?;
 
     // Do things relative to the detected action
     match detected_action {

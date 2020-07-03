@@ -4,8 +4,8 @@ use super::*;
 fn test_function_empty() {
   parse_str(
     r#"
-                fn test() {}
-            "#,
+      fn test() {}
+    "#,
   );
 }
 
@@ -41,10 +41,10 @@ fn test_function_with_args() {
 fn test_function_with_result() {
   parse_str(
     r#"
-                fn test() string {
-                    return "a"
-                }
-            "#,
+      fn test() string {
+        return "a"
+      }
+    "#,
   );
 }
 

@@ -238,25 +238,32 @@ impl Parser {
       return Ok(());
     }
     self.index -= 1;
-    match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
-      Some(Keywords::Const) => {
-        let parsed_variable = parse_var(self, Some(VarType::Const))?;
-        self.global_vars.push(parsed_variable);
-        Ok(())
-      }
-      Some(Keywords::Fn) => {
-        let parsed_function = ParseFunction::start(self)?;
-        self.functions.push(parsed_function);
-        Ok(())
-      }
-      _ => {
-        if let Some(c) = self.next_char() {
-          self.unexpected_char(c)
-        } else {
-          self.unexpected_eof()
+    while self.index < self.contents.len() {
+      match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
+        Some(Keywords::Const) => {
+          let parsed_variable = parse_var(self, Some(VarType::Const))?;
+          self.global_vars.push(parsed_variable);
+          continue;
+        }
+        Some(Keywords::Fn) => {
+          let parsed_function = ParseFunction::start(self)?;
+          self.functions.push(parsed_function);
+          continue;
+        }
+        _ => {
+          // could be newline
+          if let Some(c) = self.next_char() {
+            if c == '\n' {
+              continue;
+            }
+            return self.unexpected_char(c)
+          } else {
+            return self.unexpected_eof()
+          }
         }
       }
     }
+    Ok(())
   }
 
   /*

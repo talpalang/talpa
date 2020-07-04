@@ -420,8 +420,8 @@ impl<'a> ParseAction<'a> {
 
     // Parse the bit between the "for"/"while" and "{"
     let loop_based_on = match loop_type {
-      LoopType::For => ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?,
-      LoopType::While => {
+      LoopType::While => ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?,
+      LoopType::For => {
         let mut name = NameBuilder::new();
         loop {
           let c = self.p.next_char();

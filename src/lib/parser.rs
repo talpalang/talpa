@@ -269,6 +269,17 @@ impl Parser {
     Ok(())
   }
 
+  pub fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
+    for letter in text.chars() {
+      match self.next_char() {
+        Some(v) if v == letter => {}
+        Some(c) => return self.unexpected_char(c),
+        None => return self.unexpected_eof(),
+      }
+    }
+    Ok(())
+  }
+
   /*
       Functions written but not used so commented out
   */
@@ -288,19 +299,6 @@ impl Parser {
   //   let name_len = name.len();
   //   let res_name = name.to_string(self)?;
   //   Ok((res_name, name_len))
-  // }
-
-  // fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
-  //     for letter in text.chars() {
-  //         match self.next_char() {
-  //             Some(v) if v == letter => {}
-  //             Some(_) => return self.error(ParsingErrorType::UnexpectedChar, None),
-  //             None => {
-  //                 return self.error(ParsingErrorType::UnexpectedEOF, None);
-  //             }
-  //         }
-  //     }
-  //     Ok(())
   // }
 
   // fn forward_until(

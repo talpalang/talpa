@@ -9,6 +9,12 @@ pub enum Action {
   VarRef(String),
   StaticString(String_),
   StaticNumber(Number),
+  Break,
+  Continue,
+  For(ActionFor),
+  While(ActionWhile),
+  Loop(Actions),
+  NOOP,
 }
 
 #[derive(Debug)]
@@ -46,6 +52,11 @@ pub enum ParseActionState {
   Assigment(ParseActionStateAssigment),       // foo = bar
   FunctionCall(ParseActionStateFunctionCall), // foo(bar)
   VarRef(String),                             // foo
+  Break,
+  Continue,
+  For(ActionFor),
+  While(ActionWhile),
+  Loop(Actions),
 }
 
 pub struct ParseActionStateFunctionCall {
@@ -105,6 +116,47 @@ enum DetectedAction {
   // 7. inline structs `foo{bar: baz}`
 }
 
+enum LoopType {
+  For,
+  While,
+  Loop,
+}
+
+impl Into<LoopType> for Keywords {
+  fn into(self) -> LoopType {
+    match self {
+      Self::For => LoopType::For,
+      Self::While => LoopType::While,
+      _ => LoopType::Loop,
+    }
+  }
+}
+
+#[derive(Debug)]
+pub struct ActionWhile {
+  actions: Actions,
+  true_value: Box<Action>,
+}
+
+impl Into<Action> for ActionWhile {
+  fn into(self) -> Action {
+    Action::While(self)
+  }
+}
+
+#[derive(Debug)]
+pub struct ActionFor {
+  actions: Actions,
+  list: Box<Action>,
+  item_name: String,
+}
+
+impl Into<Action> for ActionFor {
+  fn into(self) -> Action {
+    Action::For(self)
+  }
+}
+
 impl<'a> ParseAction<'a> {
   pub fn start(
     p: &'a mut Parser,
@@ -154,6 +206,11 @@ impl<'a> ParseAction<'a> {
       }
       .into(),
       ParseActionState::VarRef(name) => Action::VarRef(name),
+      ParseActionState::Break => Action::Break,
+      ParseActionState::Continue => Action::Continue,
+      ParseActionState::While(meta) => meta.into(),
+      ParseActionState::For(meta) => meta.into(),
+      ParseActionState::Loop(actions) => Action::Loop(actions),
     });
     Ok(())
   }
@@ -164,6 +221,10 @@ impl<'a> ParseAction<'a> {
         (Keywords::Const, " \t\n"),
         (Keywords::Let, " \t\n"),
         (Keywords::Return, "} \t\n"),
+        (Keywords::Loop, "{ \t\n"),
+        (Keywords::While, " \t\n"),
+        (Keywords::For, "} \t\n"),
+        (Keywords::Break, "} \t\n"),
       ])
     } else {
       // Matching keywords is only allowed when inside the body
@@ -188,6 +249,13 @@ impl<'a> ParseAction<'a> {
           let to_commit = self.parse_return()?;
           self.commit_state(to_commit)?;
         }
+        Keywords::Loop | Keywords::While | Keywords::For => {
+          // Parse loop
+          let to_commit = self.parse_looper(matched.into())?;
+          self.commit_state(to_commit)?;
+        }
+        Keywords::Break => self.commit_state(ParseActionState::Break)?,
+        Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
         Keywords::Fn => return self.p.error(ParsingErrorType::UnexpectedResult),
       }
       return Ok(());
@@ -344,6 +412,62 @@ impl<'a> ParseAction<'a> {
     }
 
     Ok(res)
+  }
+  fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, ParsingError> {
+    self.p.next_while(" \t\n");
+
+    let mut for_item_name: Option<String> = None;
+
+    // Parse the bit between the "for"/"while" and "{"
+    let loop_based_on = match loop_type {
+      LoopType::For => ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?,
+      LoopType::While => {
+        let mut name = NameBuilder::new();
+        loop {
+          let c = self.p.next_char();
+          match c {
+            Some(' ') | Some('\t') | Some('\n') => break,
+            Some(c) if legal_name_char(c) => name.push(c),
+            Some(c) => return self.p.unexpected_char(c),
+            None => return self.p.unexpected_eof(),
+          }
+        }
+
+        for_item_name = Some(name.to_string(self.p)?);
+        self.p.expect("in")?;
+
+        if let None = self.p.next_while(" \t\n") {
+          return self.p.unexpected_eof();
+        }
+
+        ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?
+      }
+      LoopType::Loop => {
+        self.p.index -= 1;
+        Action::NOOP
+      }
+    };
+
+    match self.p.next_while(" \t\n") {
+      Some('{') => {}
+      Some(c) => return self.p.unexpected_char(c),
+      None => return self.p.unexpected_eof(),
+    };
+
+    let actions = ParseActions::start(self.p)?;
+
+    Ok(match loop_type {
+      LoopType::For => ParseActionState::For(ActionFor {
+        actions,
+        list: Box::new(loop_based_on),
+        item_name: for_item_name.unwrap_or(String::new()),
+      }),
+      LoopType::While => ParseActionState::While(ActionWhile {
+        actions,
+        true_value: Box::new(loop_based_on),
+      }),
+      LoopType::Loop => ParseActionState::Loop(actions),
+    })
   }
   fn parse_return(&mut self) -> Result<ParseActionStateReturn, ParsingError> {
     let mut res = ParseActionStateReturn { action: None };

@@ -55,19 +55,29 @@ pub fn legal_name_char(c: char) -> bool {
 
 #[derive(Clone, Copy)]
 pub enum Keywords {
-  Const,
-  Let,
-  Return,
   Fn,
+  Let,
+  For,
+  Loop,
+  Const,
+  While,
+  Break,
+  Return,
+  Continue,
 }
 
 impl Into<&'static str> for Keywords {
   fn into(self) -> &'static str {
     match self {
-      Self::Const => "const",
-      Self::Let => "let",
-      Self::Return => "return",
       Self::Fn => "fn",
+      Self::Let => "let",
+      Self::For => "for",
+      Self::Loop => "loop",
+      Self::Const => "const",
+      Self::While => "while",
+      Self::Break => "break",
+      Self::Return => "return",
+      Self::Continue => "continue",
     }
   }
 }

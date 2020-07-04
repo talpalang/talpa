@@ -205,10 +205,9 @@ impl<'a> ParseAction<'a> {
     // TODO: 2, 3, 4, 5, 6
     let mut name = NameBuilder::new();
     let mut detected_action = DetectedAction::VarRefName;
-    let mut next_char = self.p.next_char();
     let mut name_completed = false;
 
-    while let Some(c) = next_char {
+    while let Some(c) = self.p.next_char() {
       match c {
         '"' if name.len() == 0 => {
           // Parse a static string
@@ -234,6 +233,11 @@ impl<'a> ParseAction<'a> {
         }
         _ if (legal_name_char(c) || c == '.') && !name_completed => name.push(c),
         c => {
+          if name_completed {
+            self.p.index -= 1;
+            break;
+          }
+
           if let ActionToExpect::Assignment(valid_unexpted_chars) = self.action_to_expect {
             if valid_unexpted_chars.contains(c) {
               self.p.index -= 1;
@@ -243,10 +247,6 @@ impl<'a> ParseAction<'a> {
           return self.p.unexpected_char(c);
         }
       }
-      next_char = self.p.next_char();
-    }
-    if let None = next_char {
-      return self.p.unexpected_eof();
     }
 
     if let Some(number_parser) = name.is_number(self.p) {

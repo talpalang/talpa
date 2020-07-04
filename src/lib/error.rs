@@ -19,7 +19,7 @@ impl ParsingError {
     }
 
     let mut spacing = String::from("");
-    for _ in 0..self.location.x + y.to_string().len() {
+    for _ in 0..self.location.x + y.to_string().len() + format!("{}", y).len() + 1 {
       spacing += " ";
     }
     output.push(format!(

@@ -103,10 +103,8 @@ impl Parser {
     // this removes \r as it seems to cause problems during parsing
     let mut tokens = contents.into();
     for i in 0..tokens.len() {
-      let c = tokens.get(i);
-      match c {
-          Some(&13) => {tokens.remove(i);},
-          _ => ()
+      if let Some(&13) = tokens.get(i) {
+          contents.remove(i);
       }
     }
     let mut parser = Self {

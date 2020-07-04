@@ -258,7 +258,7 @@ impl<'a> ParseAction<'a> {
     name: String,
     check_for_function_open_sign: bool,
   ) -> Result<ParseActionStateFunctionCall, ParsingError> {
-    let res = ParseActionStateFunctionCall {
+    let mut res = ParseActionStateFunctionCall {
       name,
       arguments: vec![],
     };
@@ -272,8 +272,15 @@ impl<'a> ParseAction<'a> {
     }
 
     loop {
-      // TODO: Add code for parsing the arguments
-      break;
+      let action = ParseAction::start(self.p, false, ActionToExpect::Assignment)?;
+      res.arguments.push(action);
+      match self.p.next_while(" \t\n") {
+        Some(',') => continue,
+        _ => {
+          self.p.index -= 1;
+          break;
+        }
+      }
     }
 
     match self.p.next_while(" \t\n") {

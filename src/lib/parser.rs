@@ -272,6 +272,23 @@ impl Parser {
       Functions written but not used so commented out
   */
 
+  // pub fn match_name(&mut self) -> Result<(String, usize), ParsingError> {
+  //   let mut name = NameBuilder::new();
+
+  //   while let Some(c) = self.next_char() {
+  //     match c {
+  //       ' ' | '\t' | '\n' if name.len() == 0 => {} // Ignore this char
+  //       _ if legal_name_char(c) => name.push(c),
+  //       _ => break,
+  //     }
+  //   }
+
+  //   self.index -= 1;
+  //   let name_len = name.len();
+  //   let res_name = name.to_string(self)?;
+  //   Ok((res_name, name_len))
+  // }
+
   // fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
   //     for letter in text.chars() {
   //         match self.next_char() {

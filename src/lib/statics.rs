@@ -14,6 +14,9 @@ impl NameBuilder {
     Self(vec![first_char as u8])
   }
   pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, ParsingError> {
+    if self.len() == 0 {
+      return Ok(String::new());
+    }
     match String::from_utf8(self.0.clone()) {
       Ok(parsed_string) => match parsed_string.get(0..1) {
         Some(v) if "1234567890".contains(v) => {

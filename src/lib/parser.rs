@@ -252,12 +252,10 @@ impl Parser {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;
           self.global_vars.push(parsed_variable);
-          continue;
         }
         Some(Keywords::Fn) => {
           let parsed_function = ParseFunction::start(self)?;
           self.functions.push(parsed_function);
-          continue;
         }
         _ => {
           // could be newline

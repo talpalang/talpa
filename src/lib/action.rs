@@ -301,7 +301,7 @@ impl<'a> ParseAction<'a> {
         _ => {}
       }
 
-      let action = ParseAction::start(self.p, false, ActionToExpect::Assignment(",)"))?;
+      let action = ParseAction::start(self.p, true, ActionToExpect::Assignment(",)"))?;
       res.arguments.push(action);
       match self.p.next_while(" \t\n") {
         Some(',') => continue,

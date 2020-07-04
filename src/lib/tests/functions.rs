@@ -13,9 +13,9 @@ fn test_function_empty() {
 fn test_functions_empty() {
   parse_str(
     r#"
-                fn test1() {}
-                fn test2() {}
-            "#,
+      fn test1() {}
+      fn test2() {}
+    "#,
   );
 }
 
@@ -23,8 +23,8 @@ fn test_functions_empty() {
 fn test_function_with_arg() {
   parse_str(
     r#"
-                fn test(name string) {}
-            "#,
+      fn test(name string) {}
+    "#,
   );
 }
 
@@ -32,8 +32,8 @@ fn test_function_with_arg() {
 fn test_function_with_args() {
   parse_str(
     r#"
-                fn test(foo string, bar string, baz string) {}
-            "#,
+      fn test(foo string, bar string, baz string) {}
+    "#,
   );
 }
 
@@ -52,10 +52,10 @@ fn test_function_with_result() {
 fn test_function_with_arg_and_result() {
   parse_str(
     r#"
-                fn test(ab string) string {
-                    return ab
-                }
-            "#,
+      fn test(ab string) string {
+        return ab
+      }
+    "#,
   );
 }
 
@@ -76,10 +76,12 @@ fn test_function_call_without_args() {
 fn test_function_call_with_args() {
   parse_str(
     r#"
-                fn test(a int, b int) {}
-                fn test_1() {
-                    test(1, 2)
-                }
-            "#,
+      const a = 1
+      const b = 2
+      fn test(a int, b int) {}
+      fn test_1() {
+        test(a, b)
+      }
+    "#,
   );
 }

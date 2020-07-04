@@ -258,9 +258,9 @@ impl Parser {
           self.functions.push(parsed_function);
         }
         _ => {
-          // could be newline
+          // could be newline/tab/whitespace
           if let Some(c) = self.next_char() {
-            if c == '\n' {
+            if c == '\n' || c == '\t' || c == ' ' {
               continue;
             }
             return self.unexpected_char(c)

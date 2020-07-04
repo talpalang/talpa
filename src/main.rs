@@ -12,10 +12,8 @@ fn main() {
     file.read_to_end(&mut contents).unwrap();
     // this removes \r as it seems to cause problems during parsing
     for i in 0..contents.len() {
-        let c = contents.get(i);
-        match c {
-            Some(&13) => {contents.remove(i);},
-            _ => ()
+        if let Some(&13) = contents.get(i) {
+            contents.remove(i);
         }
     }
     match Parser::parse(contents) {

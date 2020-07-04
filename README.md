@@ -35,6 +35,12 @@ This roadmap is used to track the progress on the project. If you add a feature 
           * [x]  `loop {}`
           * [x]  `while true {}`
           * [x]  `for foo in bar {}`
+      * [ ] Importing
+        * [ ] Detecting to import someting
+        * [ ] Validating imports
+        * [ ] Detect import cycles
+        * [ ] Propper debugging
+          * [ ] Error messages show file origin
 
    * Parsing stage 2 verifying the data and making it more accessible
 

@@ -80,7 +80,7 @@ pub fn parse_var<'a>(
   }
 
   // Parse the action after the action after the =
-  let action = ParseAction::start(p, false, ActionToExpect::Assignment)?;
+  let action = ParseAction::start(p, false, ActionToExpect::Assignment(""))?;
 
   Ok(Variable {
     var_type,

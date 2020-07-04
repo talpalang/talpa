@@ -81,18 +81,27 @@ impl Into<ParseActionState> for ParseActionStateReturn {
 
 #[derive(PartialEq)]
 pub enum ActionToExpect {
-  ActionInBody, // A line in a function body
-  Assignment, // A assingment of some sort, like the contents of a variable or a function argument or the value of the return
+  /// A line in a function body
+  ActionInBody,
+  /// A assingment of some sort,
+  /// like the contents of a variable or a function argument or the value of the return
+  ///
+  /// The str argument tells to return Ok instaid of unexected char if on end of parsing
+  /// The unexpected char must match some letter out of the argument string
+  Assignment(&'static str),
 }
 
 enum DetectedAction {
-  VarRefName, // 1. Just a variable name `foo`
-  Assignment, // 2. `foo = bar`
-  Function,   // 3. functions `foo()`
-              // 4. inline strings `"foo"`
-              // 5. inline numbers `1`
-              // 6. inline arrays `[foo, bar]`
-              // 7. inline structs `foo{bar: baz}`
+  /// 1. Just a variable name `foo`
+  VarRefName,
+  /// 2. `foo = bar`
+  Assignment,
+  /// 3. functions `foo()`
+  Function,
+  // 4. inline strings `"foo"`
+  // 5. inline numbers `1`
+  // 6. inline arrays `[foo, bar]`
+  // 7. inline structs `foo{bar: baz}`
 }
 
 impl<'a> ParseAction<'a> {
@@ -218,17 +227,20 @@ impl<'a> ParseAction<'a> {
           detected_action = DetectedAction::Function;
           break;
         }
-        '}' if name_completed => {
-          // Detected end of function
-          self.p.index -= 1;
-          break;
-        }
         '=' => {
           // Detected variable assigment
           detected_action = DetectedAction::Assignment;
           break;
         }
-        c => return self.p.unexpected_char(c),
+        c => {
+          if let ActionToExpect::Assignment(valid_unexpted_chars) = self.action_to_expect {
+            if valid_unexpted_chars.contains(c) {
+              self.p.index -= 1;
+              break;
+            }
+          }
+          return self.p.unexpected_char(c);
+        }
       }
       next_char = self.p.next_char();
     }
@@ -243,7 +255,7 @@ impl<'a> ParseAction<'a> {
         self.commit_state(ParseActionState::VarRef(name_string))?;
       }
       DetectedAction::Assignment => {
-        let res = self.parse_assignment(name_string, true)?;
+        let res = self.parse_var_assignment(name_string, true)?;
         self.commit_state(res)?;
       }
       DetectedAction::Function => {
@@ -272,7 +284,15 @@ impl<'a> ParseAction<'a> {
     }
 
     loop {
-      let action = ParseAction::start(self.p, false, ActionToExpect::Assignment)?;
+      match self.p.next_while(" \t\n") {
+        Some(')') | None => {
+          self.p.index -= 1;
+          break;
+        }
+        _ => {}
+      }
+
+      let action = ParseAction::start(self.p, false, ActionToExpect::Assignment(",)"))?;
       res.arguments.push(action);
       match self.p.next_while(" \t\n") {
         Some(',') => continue,
@@ -291,7 +311,7 @@ impl<'a> ParseAction<'a> {
 
     Ok(res)
   }
-  fn parse_assignment(
+  fn parse_var_assignment(
     &mut self,
     name: String,
     check_for_equal_sign: bool,
@@ -308,7 +328,7 @@ impl<'a> ParseAction<'a> {
 
     match self.p.next_while(" \t\n") {
       Some(_) => {
-        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment)?;
+        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment(""))?;
         res.action = Some(action);
       }
       None => return self.p.unexpected_eof(),
@@ -322,7 +342,7 @@ impl<'a> ParseAction<'a> {
     match self.p.next_while(" \t\n") {
       Some('}') => {}
       Some(_) => {
-        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment)?;
+        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment("}"))?;
         res.action = Some(action);
       }
       None => return self.p.unexpected_eof(),

@@ -20,7 +20,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
         * [ ]  Extending types parsing `foo<bar>`
         * [ ]  Inline types `struct{}`
-      * [ ]  Actions
+      * [x]  Actions
         * [x]  Variables
           * [x]  Keyword and name `let a`, `const a`
           * [x]  Variable type `let a: string`
@@ -28,11 +28,11 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Function
           * [x]  default `foo()`
           * [x]  arguments `foo(bar, "baz")`
-        * [ ]  Static actions
+        * [x]  Static actions
           * [x]  `return`
-          * [ ]  `loop {}`
-          * [ ]  `while true {}`
-          * [ ]  `for foo in bar {}`
+          * [x]  `loop {}`
+          * [x]  `while true {}`
+          * [x]  `for foo in bar {}`
 
    * Parsing stage 2 verifying the data and making it more accessible
 

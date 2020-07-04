@@ -245,7 +245,8 @@ impl Parser {
       return Ok(());
     }
     self.index -= 1;
-    while self.index < self.contents.len() {
+    while let Some(_) = self.next_while(" \n\t") {
+      self.index -= 1;
       match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;
@@ -258,17 +259,13 @@ impl Parser {
         _ => {
           // could be newline/tab/whitespace
           if let Some(c) = self.next_char() {
-            if c == '\n' || c == '\t' || c == ' ' {
-              continue;
-            }
-            return self.unexpected_char(c)
+            return self.unexpected_char(c);
           } else {
-            return self.unexpected_eof()
+            return self.unexpected_eof();
           }
         }
       }
     }
-    Ok(())
   }
 
   /*

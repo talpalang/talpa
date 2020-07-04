@@ -104,7 +104,7 @@ impl Parser {
     let mut tokens = contents.into();
     for i in 0..tokens.len() {
       if let Some(&13) = tokens.get(i) {
-          contents.remove(i);
+        tokens.remove(i);
       }
     }
     let mut parser = Self {
@@ -266,6 +266,7 @@ impl Parser {
         }
       }
     }
+    Ok(())
   }
 
   /*

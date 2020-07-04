@@ -25,10 +25,12 @@ pub fn parse_static_str<'a>(p: &'a mut Parser) -> Result<String_, ParsingError> 
         res.content = String::from_utf8(string_content).unwrap();
         return Ok(res);
       }
-      _ => string_content.push(c as u8),
-    }
-    if escaped {
-      escaped = false;
+      _ => {
+        string_content.push(c as u8);
+        if escaped {
+          escaped = false;
+        }
+      }
     }
   }
 

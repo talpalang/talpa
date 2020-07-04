@@ -8,6 +8,7 @@ pub enum Action {
   FunctionCall(ActionFunctionCall),
   VarRef(String),
   StaticString(String_),
+  StaticNumber(Number),
 }
 
 #[derive(Debug)]
@@ -221,7 +222,6 @@ impl<'a> ParseAction<'a> {
           }
           // Else ignore this
         }
-        _ if legal_name_char(c) && !name_completed => name.push(c),
         '(' => {
           // Detected start of a function call
           detected_action = DetectedAction::Function;
@@ -232,6 +232,7 @@ impl<'a> ParseAction<'a> {
           detected_action = DetectedAction::Assignment;
           break;
         }
+        _ if (legal_name_char(c) || c == '.') && !name_completed => name.push(c),
         c => {
           if let ActionToExpect::Assignment(valid_unexpted_chars) = self.action_to_expect {
             if valid_unexpted_chars.contains(c) {
@@ -247,6 +248,14 @@ impl<'a> ParseAction<'a> {
     if let None = next_char {
       return self.p.unexpected_eof();
     }
+
+    if let Some(number_parser) = name.is_number(self.p) {
+      // The defined name is actually a number
+      let number = number_parser.result(NumberTypes::Auto)?;
+      self.res = Some(number.into());
+      return Ok(());
+    }
+
     let name_string = name.to_string(self.p)?;
 
     // Do things relative to the detected action

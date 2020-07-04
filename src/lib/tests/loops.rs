@@ -25,7 +25,7 @@ fn test_multiple_simple_fors() {
 
 #[test]
 fn test_for_incorrect_args_1() {
-  parse_str(
+  parse_str_fail(
     r#"
       fn test(items []string) {
         for a b c {}
@@ -36,7 +36,7 @@ fn test_for_incorrect_args_1() {
 
 #[test]
 fn test_for_incorrect_args_2() {
-  parse_str(
+  parse_str_fail(
     r#"
       fn test(items []string) {
         for a in {}
@@ -47,7 +47,7 @@ fn test_for_incorrect_args_2() {
 
 #[test]
 fn test_for_incorrect_args_3() {
-  parse_str(
+  parse_str_fail(
     r#"
       fn test(items []string) {
         for  in b {}
@@ -58,7 +58,7 @@ fn test_for_incorrect_args_3() {
 
 #[test]
 fn test_for_no_args() {
-  parse_str(
+  parse_str_fail(
     r#"
       fn test(items []string) {
         for {}

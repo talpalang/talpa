@@ -46,13 +46,13 @@ impl<'a> ParseType<'a> {
     while let Some(c) = self.p.next_char() {
       match &mut self.state {
         ParseTypeState::TypeName(meta) => match c {
-          _ if legal_name_char(c) => {
-            meta.name.push(c);
-          }
-          _ => {
+          '=' | ')' | '}' => {
             self.p.index -= 1;
             self.res.name = meta.name.to_string(self.p)?;
             return Ok(());
+          }
+          _ => {
+            meta.name.push(c);
           }
         },
       }

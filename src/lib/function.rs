@@ -132,15 +132,14 @@ impl<'a> ParseFunction<'a> {
               self.change_state(ParseFunctionState::Response)?;
             }
           }, // end of argument, start parsing response
+          _ if !meta.parsing_name => {
+            // Parse the argument type
+            meta.type_ = Some(ParseType::start(self.p, true)?);
+            self.change_state(ParseFunctionState::AfterArg)?;
+          }
           c if legal_name_char(c) => {
-            if meta.parsing_name {
-              // Parsing the function name
-              meta.name.push(c);
-            } else {
-              // Parse the argument type
-              meta.type_ = Some(ParseType::start(self.p, true)?);
-              self.change_state(ParseFunctionState::AfterArg)?;
-            }
+            // Parsing the function name
+            meta.name.push(c);
           }
           _ => {
             // Not a valid name char return error

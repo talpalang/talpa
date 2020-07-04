@@ -21,13 +21,13 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [ ]  Extending types parsing `foo<bar>`
         * [ ]  Inline types `struct{}`
       * [ ]  Actions
-        * [ ]  Variables
+        * [x]  Variables
           * [x]  Keyword and name `let a`, `const a`
           * [x]  Variable type `let a: string`
           * [x]  assignment `let foo = "bar"` or `let foo = bar()`
-        * [ ]  Function
+        * [x]  Function
           * [x]  default `foo()`
-          * [ ]  arguments `foo(bar, "baz")`
+          * [x]  arguments `foo(bar, "baz")`
         * [ ]  Static actions
           * [x]  `return`
           * [ ]  `loop {}`

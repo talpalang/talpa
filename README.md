@@ -18,7 +18,9 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Function response `fn foo() string {}`
       * [ ]  Types
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
-        * [ ]  Extending types parsing `foo<bar>`
+        * [ ]  Extending types parsing `foo<bar>` or `[]string`
+          * [x] Don't fail on these types
+          * [ ] Parse these types into something usable instaid of a string
         * [ ]  Inline types `struct{}`
       * [x]  Actions
         * [x]  Variables

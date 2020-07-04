@@ -12,6 +12,9 @@ fn main() {
     file.read_to_end(&mut contents).unwrap();
     match Parser::parse(contents) {
         Err(err) => println!("{}", err),
-        Ok(res) => println!("{:?}", res.functions),
+        Ok(res) => {
+            println!("Functions: {:?}", res.functions);
+            println!("Globals: {:?}", res.global_vars);
+        },
     }
 }

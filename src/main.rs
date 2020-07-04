@@ -10,14 +10,6 @@ fn main() {
     let mut file = File::open("./src/example.gpl").unwrap();
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
-    // this removes \r as it seems to cause problems during parsing
-    for i in 0..contents.len() {
-        let c = contents.get(i);
-        match c {
-            Some(&13) => {contents.remove(i);},
-            _ => ()
-        }
-    }
     match Parser::parse(contents) {
         Err(err) => println!("{}", err),
         Ok(res) => println!("{:?}", res.functions),

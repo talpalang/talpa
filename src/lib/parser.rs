@@ -100,9 +100,18 @@ impl Parser {
     Err(res)
   }
   pub fn parse(contents: impl Into<Vec<u8>>) -> Result<Self, ParsingError> {
+    // this removes \r as it seems to cause problems during parsing
+    let mut tokens = contents.into();
+    for i in 0..tokens.len() {
+      let c = tokens.get(i);
+      match c {
+          Some(&13) => {tokens.remove(i);},
+          _ => ()
+      }
+    }
     let mut parser = Self {
       index: 0,
-      contents: contents.into(),
+      contents: tokens,
       functions: vec![],
       global_vars: vec![],
     };

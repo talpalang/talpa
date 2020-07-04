@@ -100,9 +100,16 @@ impl Parser {
     Err(res)
   }
   pub fn parse(contents: impl Into<Vec<u8>>) -> Result<Self, ParsingError> {
+    // this removes \r as it seems to cause problems during parsing
+    let mut tokens = contents.into();
+    for i in 0..tokens.len() {
+      if let Some(&13) = tokens.get(i) {
+          contents.remove(i);
+      }
+    }
     let mut parser = Self {
       index: 0,
-      contents: contents.into(),
+      contents: tokens,
       functions: vec![],
       global_vars: vec![],
     };
@@ -238,22 +245,24 @@ impl Parser {
       return Ok(());
     }
     self.index -= 1;
-    match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
-      Some(Keywords::Const) => {
-        let parsed_variable = parse_var(self, Some(VarType::Const))?;
-        self.global_vars.push(parsed_variable);
-        Ok(())
-      }
-      Some(Keywords::Fn) => {
-        let parsed_function = ParseFunction::start(self)?;
-        self.functions.push(parsed_function);
-        Ok(())
-      }
-      _ => {
-        if let Some(c) = self.next_char() {
-          self.unexpected_char(c)
-        } else {
-          self.unexpected_eof()
+    while let Some(_) = self.next_while(" \n\t") {
+      self.index -= 1;
+      match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
+        Some(Keywords::Const) => {
+          let parsed_variable = parse_var(self, Some(VarType::Const))?;
+          self.global_vars.push(parsed_variable);
+        }
+        Some(Keywords::Fn) => {
+          let parsed_function = ParseFunction::start(self)?;
+          self.functions.push(parsed_function);
+        }
+        _ => {
+          // could be newline/tab/whitespace
+          if let Some(c) = self.next_char() {
+            return self.unexpected_char(c);
+          } else {
+            return self.unexpected_eof();
+          }
         }
       }
     }

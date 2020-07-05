@@ -21,7 +21,14 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [ ]  Extending types parsing `foo<bar>` or `[]string`
           * [x] Don't fail on these types
           * [ ] Parse these types into something usable instaid of a string
-        * [ ]  Inline types `struct{}`
+        * [ ]  Inline types
+          * [ ] structs `struct{}`
+          * [ ] arrays `[]string`
+          * [ ] enums `enum{}`
+        * [ ] global types
+          * [ ] structs `struct foo {}`
+          * [ ] enums `enum foo {}`
+          * [ ] custom types `type foo = []bar`
       * [x]  Actions
         * [x]  Variables
           * [x]  Keyword and name `let a`, `const a`

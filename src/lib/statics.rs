@@ -59,10 +59,13 @@ pub enum Keywords {
   Let,
   For,
   Loop,
+  Enum,
+  Type,
   Const,
   While,
   Break,
   Return,
+  Struct,
   Continue,
 }
 
@@ -73,9 +76,12 @@ impl Into<&'static str> for Keywords {
       Self::Let => "let",
       Self::For => "for",
       Self::Loop => "loop",
+      Self::Type => "type",
+      Self::Enum => "enum",
       Self::Const => "const",
       Self::While => "while",
       Self::Break => "break",
+      Self::Struct => "struct",
       Self::Return => "return",
       Self::Continue => "continue",
     }

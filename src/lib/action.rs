@@ -256,7 +256,9 @@ impl<'a> ParseAction<'a> {
         }
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
-        Keywords::Fn => return self.p.error(ParsingErrorType::UnexpectedResult),
+        Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type => {
+          return self.p.error(ParsingErrorType::UnexpectedResult)
+        }
       }
       return Ok(());
     }

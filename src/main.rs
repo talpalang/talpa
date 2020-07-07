@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-    // the .gpl is a temporary file extension (General Programming Language)
+    // the .tp is a temporary file extension (Talpa Language)
     // the example file should be updated with all working components
     let mut file = File::open("./src/example.gpl").unwrap();
     let mut contents = vec![];
@@ -15,6 +15,6 @@ fn main() {
         Ok(res) => {
             println!("Functions: {:?}", res.functions);
             println!("Globals: {:?}", res.global_vars);
-        },
+        }
     }
 }

@@ -1,7 +1,7 @@
-# General Programming Language
+# Talpa *a General Programming Language*
 
-> This is a temporary repository for a new programming language designed to be compiled into many other languages.
-> For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235).
+> A WIP programming language designed to be compiled into many other languages.
+> For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235). 
 
 Currently, the language contains very few working features. When adding new features, the project follows [test-driven development](https://en.wikipedia.org/wiki/Test-driven_development) practices.
 

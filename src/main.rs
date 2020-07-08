@@ -15,7 +15,8 @@ fn main() {
         Ok(res) => {
             println!("Functions: {:?}", res.functions);
             println!("Globals: {:?}", res.global_vars);
-            // For now, we generare JS code to test that everything works
+            // TODO: Parsing stage 2 verifying the data and making it more accessible
+            // Generate code
             match JSGenerator::generate(res) {
                 Err(err) => println!("{}", err),
                 Ok(res) => {

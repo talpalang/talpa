@@ -7,7 +7,7 @@ use std::io::prelude::*;
 fn main() {
     // the .tp is a temporary file extension (Talpa Language)
     // the example file should be updated with all working components
-    let mut file = File::open("./src/example.gpl").unwrap();
+    let mut file = File::open("./src/example.tp").unwrap();
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
     match Parser::parse(contents) {

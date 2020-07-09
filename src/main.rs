@@ -1,7 +1,7 @@
 mod lib;
 
 use lib::Parser;
-use lib::JSGenerator;
+use lib::languages::generate;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -16,11 +16,13 @@ fn main() {
             println!("{:#?}", res);
             // Stage 2 goes here
             // Stage 3: Generate code
-            // use JSGenerator for now
-            let code = JSGenerator::generate(res);
+            // use javascript for now (change to arg in future)
+            let code = generate(res, "javascript");
             match code {
-                Err(err) => println!("{}", err),
-                Ok(res) => println!("{}", res.src)
+                Err(err) => println!("{:?}", err),
+                Ok(res) => {
+                    println!("{}", res);
+                }
             }
         },
     }

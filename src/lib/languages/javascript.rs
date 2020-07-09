@@ -1,10 +1,10 @@
 use super::*;
 
-pub struct JSGenerator {
+pub struct JavaScript {
   pub src: String
 }
 
-impl JSGenerator {
+impl JavaScript {
   // Generate javascript code using tokens from parser
   pub fn generate(parser: Parser) -> Result<Self, ParsingError> {
     let mut code = Self{
@@ -32,15 +32,17 @@ impl JSGenerator {
     while index < func.args.len() {
       let arg = &func.args[index];
       src += &arg.0;
+      src += ",";
       index += 1;
     }
+    src.pop();
     src += ") {\n";
     let actions = func.body.list;
     for action in actions {
       src += &self.action(action);
     }
     src += "}\n";
-    return src.to_string();
+    return src;
   }
   pub fn global(&mut self, var: Variable) -> String {
     let mut src = String::new();
@@ -52,7 +54,7 @@ impl JSGenerator {
     src += " = ";
     src += &self.action(*var.action);
     src += ";\n";
-    return src.to_string();
+    return src;
   }
   pub fn action(&mut self, action: Action) -> String {
     // match an action and return code
@@ -63,10 +65,12 @@ impl JSGenerator {
       Action::For(res) => src += &self.action_for(res),
       Action::FunctionCall(res) => src += &self.action_func_call(res),
       Action::Loop(res) => src += &self.action_loop(res),
+      Action::Return(res) => src += &self.action_return(res),
       Action::StaticNumber(res) => src += &self.action_num(res),
       Action::StaticString(res) => src += &self.action_str(res),
       Action::Variable(res) => src += &self.action_var(res),
       Action::VarRef(res) => src += &res,
+      // add remaining actions
       _ => {src += "undefined\n"}
     }
     return src;
@@ -103,6 +107,13 @@ impl JSGenerator {
       src += &self.action(act);
     }
     src += "}\n";
+    return src;
+  }
+  pub fn action_return(&mut self, action: Option<Box<Action>>) -> String {
+    let mut src = String::new();
+    src += "return ";
+    src += &self.action(*action.unwrap());
+    src += ";\n";
     return src;
   }
   pub fn action_num(&mut self, action: numbers::Number) -> String {

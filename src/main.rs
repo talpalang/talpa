@@ -13,17 +13,15 @@ fn main() {
     match parser {
         Err(err) => println!("{}", err),
         Ok(res) => {
-            println!("Functions: {:?}", res.functions);
-            println!("Globals: {:?}", res.global_vars);
-            // TODO: Parsing stage 2 verifying the data and making it more accessible
-            // Generate code
-            match JSGenerator::generate(res) {
+            println!("{:#?}", res);
+            // Stage 2 goes here
+            // Stage 3: Generate code
+            // use JSGenerator for now
+            let code = JSGenerator::generate(res);
+            match code {
                 Err(err) => println!("{}", err),
-                Ok(res) => {
-                    println!("Javascript:");
-                    println!("{}", res.src);
-                }
+                Ok(res) => println!("{}", res.src)
             }
-        }
+        },
     }
 }

@@ -1,12 +1,28 @@
 use super::*;
 use std::collections::HashMap;
+use std::fmt;
 
-#[derive(Debug)]
 pub struct Parser {
   pub index: usize,
   pub contents: Vec<u8>,
   pub functions: Vec<Function>,
   pub global_vars: Vec<Variable>,
+}
+
+#[derive(Debug)]
+pub struct SimpleParserOutput<'a> {
+  pub functions: &'a Vec<Function>,
+  pub global_vars: &'a Vec<Variable>,
+}
+
+impl fmt::Debug for Parser {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let simple_parser = SimpleParserOutput {
+      functions: &self.functions,
+      global_vars: &self.global_vars,
+    };
+    writeln!(f, "{:#?}", simple_parser)
+  }
 }
 
 impl Parser {

@@ -25,15 +25,10 @@ impl JavaScript {
   }
   pub fn function(&mut self, func: Function) -> String {
     let mut src = String::new();
-    src += "function ";
-    src += &func.name.unwrap();
-    src += "(";
-    let mut index = 0;
-    while index < func.args.len() {
-      let arg = &func.args[index];
+    src += &format!("function {}( ", func.name.unwrap());
+    for arg in func.args {
       src += &arg.0;
       src += ",";
-      index += 1;
     }
     src.pop();
     src += ") {\n";
@@ -50,38 +45,38 @@ impl JavaScript {
       variable::VarType::Const => {src += "const ";}
       _ => {/* Add error */}
     }
-    src += &var.name.to_string();
-    src += " = ";
-    src += &self.action(*var.action);
-    src += ";\n";
+    src += &format!(
+      "{name} = {action};\n", 
+      name=&var.name.to_string(), 
+      action=&self.action(*var.action)
+    );
     return src;
   }
   pub fn action(&mut self, action: Action) -> String {
     // match an action and return code
     let mut src = String::new();
-    match action {
-      Action::Break => src += "break;\n",
-      Action::Continue => src += "continue;\n",
-      Action::For(res) => src += &self.action_for(res),
-      Action::FunctionCall(res) => src += &self.action_func_call(res),
-      Action::Loop(res) => src += &self.action_loop(res),
-      Action::Return(res) => src += &self.action_return(res),
-      Action::StaticNumber(res) => src += &self.action_num(res),
-      Action::StaticString(res) => src += &self.action_str(res),
-      Action::Variable(res) => src += &self.action_var(res),
-      Action::VarRef(res) => src += &res,
+    let action_code = match action {
+      Action::Break => "break;\n".to_string(),
+      Action::Continue => "continue;\n".to_string(),
+      Action::For(res) => self.action_for(res),
+      Action::FunctionCall(res) => self.action_func_call(res),
+      Action::Loop(res) => self.action_loop(res),
+      Action::Return(res) => self.action_return(res),
+      Action::StaticNumber(res) => self.action_num(res),
+      Action::StaticString(res) => self.action_str(res),
+      Action::Variable(res) => self.action_var(res),
+      Action::VarRef(res) => res,
       // add remaining actions
-      _ => {src += "undefined\n"}
-    }
+      Action::Assigment(_res) => "/* Assignment is unimplemented */".to_string(),
+      Action::NOOP => "/* NOOP is unimplemented */".to_string(),
+      Action::While(_res) => "/* While is unimplemented */".to_string(),
+    };
+    src += &action_code;
     return src;
   }
   pub fn action_for(&mut self, action: action::ActionFor) -> String {
     let mut src = String::new();
-    src += "for (";
-    src += &action.item_name;
-    src += " in ";
-    src += &self.action(*action.list);
-    src += ") {\n";
+    src += &format!("for ({name} in {iter}) {{\n", name = &action.item_name, iter = &self.action(*action.list));
     for act in action.actions.list {
       src += &self.action(act);
     }

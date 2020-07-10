@@ -10,20 +10,18 @@ fn main() {
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
     let parser = Parser::parse(contents);
-    match parser {
-        Err(err) => println!("{}", err),
-        Ok(res) => {
-            println!("{:#?}", res);
-            // Stage 2 goes here
-            // Stage 3: Generate code
-            // use javascript for now (change to arg in future)
-            let code = generate(res, "javascript");
-            match code {
-                Err(err) => println!("{:?}", err),
-                Ok(res) => {
-                    println!("{}", res);
-                }
-            }
-        },
-    }
+    let res = match parser {
+        Err(err) => {
+            println!("{}", err);
+            return;
+        }
+        Ok(res) => res,
+    };
+    println!("{:#?}", res);
+    let code = generate(res, "javascript");
+    let src = match code {
+        Err(err) => {println!("{:?}", err);"".to_string()},
+        Ok(res) => res
+    };
+    println!("{}", src);
 }

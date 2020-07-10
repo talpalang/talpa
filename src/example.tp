@@ -1,5 +1,15 @@
-fn empty() {}
+const glob = "Global variable"
 
-fn take_args(a int, b int) {}
+fn do_something() string {
+  return "Hello, world!"
+}
 
-fn main() { empty() }
+fn test(a int, b int) {
+  let val1 = a
+  let val2 = b
+}
+
+fn main() {
+  let hello = "Hello, world!"
+  test(20, 48)
+}

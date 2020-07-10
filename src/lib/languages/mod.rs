@@ -3,30 +3,22 @@ mod javascript;
 use super::*;
 pub use javascript::JavaScript;
 
-#[derive(Debug)]
-pub struct LangError {
-  language: String
-}
-
 pub enum Lang {
   JS
 }
 
-impl Into<&'static str> for Lang {
-  fn into(self) -> &'static str {
-    match self {
-      Self::JS => "JavaScript"
-    }
+impl Into<Lang> for String {
+  fn into(self) -> Lang {
+    return Lang::JS;
   }
 }
 
-
-pub fn generate(parser: Parser, lang: Lang) -> Result<String, String> {
-  let code = match lang {
+pub fn generate(parser: Parser, lang: String) -> Result<String, ParsingErrorType> {
+  let code = match lang.into() {
     Lang::JS => JavaScript::generate(parser)
   };
   match code {
     Ok(res) => return Ok(res.src),
-    Err(err) => return Err(err.to_string())
+    Err(err) => return Err(ParsingErrorType::LangError)
   }
 }

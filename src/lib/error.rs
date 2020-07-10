@@ -59,6 +59,7 @@ pub enum ParsingErrorType {
   UnexpectedChar(char),
   UnexpectedResult,
   InvalidNameChar,
+  LangError,
   Custom(&'static str),
 }
 
@@ -70,6 +71,7 @@ impl Display for ParsingErrorType {
       Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
+      Self::LangError => write!(f, "Invalid language"),
       Self::Custom(error) => write!(f, "{}", error),
     }
   }

@@ -1,5 +1,6 @@
-use super::*;
 mod javascript;
+
+use super::*;
 pub use javascript::JavaScript;
 
 #[derive(Debug)]

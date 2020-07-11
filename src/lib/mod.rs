@@ -12,7 +12,7 @@ mod variable;
 
 pub use action::{Action, ActionToExpect, ParseAction, ParseActionState};
 pub use actions::{Actions, ParseActions};
-pub use error::{ParsingError, ParsingErrorType};
+pub use error::{LangErrorType, ParsingError, ParsingErrorType};
 pub use function::{Function, ParseFunction};
 pub use numbers::{Number, NumberParser, NumberTypes};
 pub use parser::{CodeLocation, Parser};

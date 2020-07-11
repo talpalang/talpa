@@ -1,15 +1,13 @@
 use super::*;
 
 pub struct JavaScript {
-  pub src: String
+  pub src: String,
 }
 
 impl JavaScript {
   // Generate javascript code using tokens from parser
-  pub fn generate(parser: Parser) -> Result<Self, ParsingError> {
-    let mut code = Self{
-      src: String::new()
-    };
+  pub fn generate(parser: Parser) -> Result<Self, LangErrorType> {
+    let mut code = Self { src: String::new() };
     // define functions
     for func in parser.functions {
       let function = code.function(func);
@@ -42,13 +40,15 @@ impl JavaScript {
   pub fn global(&mut self, var: Variable) -> String {
     let mut src = String::new();
     match var.var_type {
-      variable::VarType::Const => {src += "const ";}
-      _ => {/* Add error */}
+      variable::VarType::Const => {
+        src += "const ";
+      }
+      _ => { /* Add error */ }
     }
     src += &format!(
-      "{name} = {action};\n", 
-      name=&var.name.to_string(), 
-      action=&self.action(*var.action)
+      "{name} = {action};\n",
+      name = &var.name.to_string(),
+      action = &self.action(*var.action)
     );
     return src;
   }
@@ -76,7 +76,11 @@ impl JavaScript {
   }
   pub fn action_for(&mut self, action: action::ActionFor) -> String {
     let mut src = String::new();
-    src += &format!("for ({name} in {iter}) {{\n", name = &action.item_name, iter = &self.action(*action.list));
+    src += &format!(
+      "for ({name} in {iter}) {{\n",
+      name = &action.item_name,
+      iter = &self.action(*action.list)
+    );
     for act in action.actions.list {
       src += &self.action(act);
     }

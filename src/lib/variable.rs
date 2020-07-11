@@ -30,8 +30,8 @@ pub fn parse_var<'a>(
   let var_type = if let Some(type_) = var_type_option {
     type_
   } else {
-    let to_match = &[(Keywords::Const, " \t\n"), (Keywords::Let, " \t\n")];
-    let match_result = p.try_match(to_match);
+    let to_match = vec![(Keywords::Const, " \t\n"), (Keywords::Let, " \t\n")];
+    let match_result = p.try_match(&to_match);
     if let None = match_result {
       return p.unexpected_char(*p.contents.get(p.index).unwrap() as char);
     }

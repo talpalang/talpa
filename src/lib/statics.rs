@@ -10,6 +10,8 @@ impl NameBuilder {
   pub fn new() -> Self {
     Self(vec![])
   }
+  /// new_with_char creates a new name builder with a start char.
+  /// you will need to check first_char if it's a valid name char
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }

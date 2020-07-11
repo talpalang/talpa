@@ -13,7 +13,7 @@ impl JavaScript {
       let function = code.function(func);
       code.src += &function;
     }
-    for glob in parser.global_vars {
+    for glob in parser.vars {
       let global = code.global(glob);
       code.src += &global;
     }

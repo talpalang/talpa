@@ -217,7 +217,7 @@ impl<'a> ParseAction<'a> {
 
   fn detect(&mut self) -> Result<(), ParsingError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
-      self.p.try_match(&[
+      self.p.try_match(&vec![
         (Keywords::Const, " \t\n"),
         (Keywords::Let, " \t\n"),
         (Keywords::Return, "} \t\n"),
@@ -251,7 +251,7 @@ impl<'a> ParseAction<'a> {
         }
         Keywords::Loop | Keywords::While | Keywords::For => {
           // Parse loop
-          let to_commit = self.parse_looper(matched.into())?;
+          let to_commit = self.parse_looper(matched.clone().into())?;
           self.commit_state(to_commit)?;
         }
         Keywords::Break => self.commit_state(ParseActionState::Break)?,

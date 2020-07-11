@@ -17,9 +17,10 @@ pub use function::{Function, ParseFunction};
 pub use numbers::{Number, NumberParser, NumberTypes};
 pub use parser::{CodeLocation, Parser};
 pub use statics::{legal_name_char, Keywords, NameBuilder};
+pub use std::collections::HashMap;
 pub use std::fmt::Display;
 pub use strings::{parse_static_str, String_};
-pub use types::{ParseType, Type};
+pub use types::{parse_struct, ParseType, Struct, Type};
 pub use variable::{parse_var, VarType, Variable};
 
 #[cfg(test)]

@@ -13,7 +13,7 @@ impl Into<Lang> for String {
   }
 }
 
-pub fn generate(parser: Parser, lang: String) -> Result<String, ParsingErrorType> {
+pub fn generate(parser: Parser, lang: Into<Lang>) -> Result<String, ParsingErrorType> {
   let code = match lang.into() {
     Lang::JS => JavaScript::generate(parser)
   };

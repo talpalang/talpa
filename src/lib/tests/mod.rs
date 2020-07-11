@@ -2,6 +2,7 @@ mod comments;
 mod functions;
 mod general;
 mod loops;
+mod structs;
 mod variables;
 
 use super::*;

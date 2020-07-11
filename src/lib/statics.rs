@@ -89,3 +89,9 @@ impl Into<&'static str> for Keywords {
     }
   }
 }
+
+impl<'a> From<&'a Keywords> for &'static str {
+  fn from(keywords: &'a Keywords) -> &'static str {
+    keywords.into()
+  }
+}

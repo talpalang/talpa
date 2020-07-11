@@ -217,14 +217,14 @@ impl<'a> ParseAction<'a> {
 
   fn detect(&mut self) -> Result<(), ParsingError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
-      self.p.try_match(&vec![
-        (Keywords::Const, " \t\n"),
-        (Keywords::Let, " \t\n"),
-        (Keywords::Return, "} \t\n"),
-        (Keywords::Loop, "{ \t\n"),
-        (Keywords::While, " \t\n"),
-        (Keywords::For, "} \t\n"),
-        (Keywords::Break, "} \t\n"),
+      self.p.try_match(vec![
+        (&Keywords::Const, Keywords::Const.into(), " \t\n"),
+        (&Keywords::Let, Keywords::Let.into(), " \t\n"),
+        (&Keywords::Return, Keywords::Return.into(), "} \t\n"),
+        (&Keywords::Loop, Keywords::Loop.into(), "{ \t\n"),
+        (&Keywords::While, Keywords::While.into(), " \t\n"),
+        (&Keywords::For, Keywords::For.into(), "} \t\n"),
+        (&Keywords::Break, Keywords::Break.into(), "} \t\n"),
       ])
     } else {
       // Matching keywords is only allowed when inside the body

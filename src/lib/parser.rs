@@ -191,28 +191,33 @@ impl Parser {
   }
 
   /// Tries to match something
-  /// The second string for the options array is for checking if the matched value has a certen surfix
+  ///
+  /// The second string is for the the type T to return
+  ///
+  /// The third string for the options array is for checking if the matched value has a certen surfix
   /// The next char after the matched value will be checked against it
   /// For example surfix "abc" will match the following matched string surfix: 'a', 'b' or 'c'
-  pub fn try_match<'a, 'b, T>(&mut self, options: &'b Vec<(T, &'static str)>) -> Option<&'b T>
-  where
-    T: Into<&'a str>,
-  {
+  ///
+  /// Note: this function is garbage and should be re-worked
+  /// Every time i try to change the arguments to something more usefull i always get in fight with the borrow checker and just go on.
+  pub fn try_match<'a, T>(
+    &mut self,
+    options: Vec<(&'a T, &'static str, &'static str)>,
+  ) -> Option<&'a T> {
     if options.len() == 0 {
       return None;
     }
 
-    let mut meta_map: HashMap<&'a str, (&'b T, &'static str)> =
+    let mut meta_map: HashMap<&'static str, (&'a T, &'static str)> =
       HashMap::with_capacity(options.len());
     let mut options_vec: Vec<&str> = vec![];
 
     for option in options {
-      let to_match = option.0.into();
-      if to_match.len() == 0 {
+      if option.1.len() == 0 {
         continue;
       }
-      options_vec.push(to_match);
-      meta_map.insert(to_match, (&option.0, option.1));
+      options_vec.push(option.1);
+      meta_map.insert(option.1, (option.0, option.2));
     }
 
     let mut char_count: usize = 0;
@@ -267,10 +272,10 @@ impl Parser {
     self.index -= 1;
     while let Some(_) = self.next_while(" \n\t") {
       self.index -= 1;
-      match self.try_match(&vec![
-        (Keywords::Fn, " \t\n"),
-        (Keywords::Const, " \t\n"),
-        (Keywords::Struct, " \t\n"),
+      match self.try_match(vec![
+        (&Keywords::Fn, Keywords::Fn.into(), " \t\n"),
+        (&Keywords::Const, Keywords::Const.into(), " \t\n"),
+        (&Keywords::Struct, Keywords::Struct.into(), " \t\n"),
       ]) {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;

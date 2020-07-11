@@ -89,19 +89,19 @@ impl<'a> ParseType<'a> {
     Ok(s.res)
   }
   fn parse(&mut self) -> Result<(), ParsingError> {
-    self.p.try_match(&vec![
-      (Type::Int, ""),
-      (Type::I8, ""),
-      (Type::I16, ""),
-      (Type::I32, ""),
-      (Type::I64, ""),
-      (Type::UInt, ""),
-      (Type::U8, ""),
-      (Type::U16, ""),
-      (Type::U32, ""),
-      (Type::U64, ""),
-      (Type::String, ""),
-      (Type::Char, ""),
+    self.p.try_match(vec![
+      (&Type::Int, Type::Int.into(), ""),
+      (&Type::I8, Type::I8.into(), ""),
+      (&Type::I16, Type::I16.into(), ""),
+      (&Type::I32, Type::I32.into(), ""),
+      (&Type::I64, Type::I64.into(), ""),
+      (&Type::UInt, Type::UInt.into(), ""),
+      (&Type::U8, Type::U8.into(), ""),
+      (&Type::U16, Type::U16.into(), ""),
+      (&Type::U32, Type::U32.into(), ""),
+      (&Type::U64, Type::U64.into(), ""),
+      (&Type::String, Type::String.into(), ""),
+      (&Type::Char, Type::Char.into(), ""),
     ]);
 
     while let Some(c) = self.p.next_char() {

@@ -146,9 +146,9 @@ impl Into<Action> for ActionWhile {
 
 #[derive(Debug)]
 pub struct ActionFor {
-  actions: Actions,
-  list: Box<Action>,
-  item_name: String,
+  pub actions: Actions,
+  pub list: Box<Action>,
+  pub item_name: String,
 }
 
 impl Into<Action> for ActionFor {

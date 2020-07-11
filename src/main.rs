@@ -1,17 +1,27 @@
 mod lib;
 
 use lib::Parser;
+use lib::languages::generate;
 use std::fs::File;
 use std::io::prelude::*;
 
 fn main() {
-    // the .tp is a temporary file extension (Talpa Language)
-    // the example file should be updated with all working components
     let mut file = File::open("./src/example.tp").unwrap();
     let mut contents = vec![];
     file.read_to_end(&mut contents).unwrap();
-    match Parser::parse(contents) {
-        Err(err) => println!("{}", err),
-        Ok(res) => println!("{:#?}", res),
-    }
+    let parser = Parser::parse(contents);
+    let res = match parser {
+        Err(err) => {
+            println!("{}", err);
+            return;
+        }
+        Ok(res) => res,
+    };
+    println!("{:#?}", res);
+    let code = generate(res, "js".to_string());
+    let src = match code {
+        Err(err) => {println!("{:?}", err);"".to_string()},
+        Ok(res) => res
+    };
+    println!("{}", src);
 }

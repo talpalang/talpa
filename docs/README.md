@@ -8,8 +8,6 @@
 - [Functions](Functions.md)
 
 
-## Maintainer Development Plans
+## Developer Docs
 
-These file contain the plans for **future** implementations. 
-
-- [Comments](dev/Comments.md)
+- [Language Support](language.md)

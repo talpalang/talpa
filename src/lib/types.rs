@@ -59,68 +59,54 @@ impl Type {
   }
 }
 
-struct ParseTypeStateTypeName {
-  name: NameBuilder,
-}
-
-enum ParseTypeState {
-  TypeName(ParseTypeStateTypeName),
-}
-
-pub struct ParseType<'a> {
-  p: &'a mut Parser,
-  res: Type,
-  state: ParseTypeState,
-}
-
-impl<'a> ParseType<'a> {
-  pub fn start(p: &'a mut Parser, go_back_one: bool) -> Result<Type, ParsingError> {
-    if go_back_one {
-      p.index -= 1;
-    }
-    let mut s = Self {
-      p,
-      res: Type::empty(),
-      state: ParseTypeState::TypeName(ParseTypeStateTypeName {
-        name: NameBuilder::new(),
-      }),
-    };
-    s.parse()?;
-    Ok(s.res)
+pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, ParsingError> {
+  if go_back_one {
+    p.index -= 1;
   }
-  fn parse(&mut self) -> Result<(), ParsingError> {
-    self.p.try_match(vec![
-      (&Type::Int, Type::Int.into(), ""),
-      (&Type::I8, Type::I8.into(), ""),
-      (&Type::I16, Type::I16.into(), ""),
-      (&Type::I32, Type::I32.into(), ""),
-      (&Type::I64, Type::I64.into(), ""),
-      (&Type::UInt, Type::UInt.into(), ""),
-      (&Type::U8, Type::U8.into(), ""),
-      (&Type::U16, Type::U16.into(), ""),
-      (&Type::U32, Type::U32.into(), ""),
-      (&Type::U64, Type::U64.into(), ""),
-      (&Type::String, Type::String.into(), ""),
-      (&Type::Char, Type::Char.into(), ""),
-    ]);
 
-    while let Some(c) = self.p.next_char() {
-      match &mut self.state {
-        ParseTypeState::TypeName(meta) => match c {
-          '=' | ')' | '}' | ',' => {
-            self.p.index -= 1;
-            let type_string = meta.name.to_string(self.p)?;
-            self.res = Type::TypeString(type_string);
-            return Ok(());
-          }
-          _ => {
-            meta.name.push(c);
-          }
-        },
+  match p.try_match(vec![
+    (&Type::Int, Type::Int.into(), ""),
+    (&Type::I8, Type::I8.into(), ""),
+    (&Type::I16, Type::I16.into(), ""),
+    (&Type::I32, Type::I32.into(), ""),
+    (&Type::I64, Type::I64.into(), ""),
+    (&Type::UInt, Type::UInt.into(), ""),
+    (&Type::U8, Type::U8.into(), ""),
+    (&Type::U16, Type::U16.into(), ""),
+    (&Type::U32, Type::U32.into(), ""),
+    (&Type::U64, Type::U64.into(), ""),
+    (&Type::String, Type::String.into(), ""),
+    (&Type::Char, Type::Char.into(), ""),
+  ]) {
+    Some(matched_type) => {
+      let add_to_substract = if let Some(c) = p.next_char() {
+        if !legal_name_char(c) {
+          return Ok(matched_type.clone());
+        }
+        1
+      } else {
+        0
+      };
+      let name: &'static str = Type::U64.into();
+      p.index -= name.len() + add_to_substract;
+    }
+    _ => {}
+  };
+
+  let mut type_name = NameBuilder::new();
+  while let Some(c) = p.next_char() {
+    match c {
+      '=' | ')' | '}' | ',' => {
+        p.index -= 1;
+        let type_string = type_name.to_string(p)?;
+        return Ok(Type::TypeString(type_string));
+      }
+      _ => {
+        type_name.push(c);
       }
     }
-    Ok(())
   }
+  p.unexpected_eof()
 }
 
 #[derive(Debug, Clone)]
@@ -197,7 +183,7 @@ pub fn parse_struct<'a>(p: &'a mut Parser, inline: bool) -> Result<Struct, Parsi
     if let None = p.next_while(" \t") {
       return p.unexpected_eof();
     };
-    let parsed_type = ParseType::start(p, true)?;
+    let parsed_type = parse_type(p, true)?;
 
     res.fields.insert(field_name, parsed_type);
   }

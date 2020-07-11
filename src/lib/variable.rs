@@ -71,7 +71,7 @@ pub fn parse_var<'a>(
     return p.unexpected_eof();
   }
   if next_char.unwrap() == ':' {
-    data_type = Some(ParseType::start(p, true)?);
+    data_type = Some(parse_type(p, true)?);
     next_char = p.next_while(" \t\n");
   }
 

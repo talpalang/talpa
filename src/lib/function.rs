@@ -134,7 +134,7 @@ impl<'a> ParseFunction<'a> {
           }, // end of argument, start parsing response
           _ if !meta.parsing_name => {
             // Parse the argument type
-            meta.type_ = Some(ParseType::start(self.p, true)?);
+            meta.type_ = Some(parse_type(self.p, true)?);
             self.change_state(ParseFunctionState::AfterArg)?;
           }
           c if legal_name_char(c) => {

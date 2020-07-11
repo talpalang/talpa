@@ -59,7 +59,6 @@ pub enum ParsingErrorType {
   UnexpectedChar(char),
   UnexpectedResult,
   InvalidNameChar,
-  LangError,
   Custom(&'static str),
 }
 
@@ -71,8 +70,20 @@ impl Display for ParsingErrorType {
       Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
-      Self::LangError => write!(f, "Invalid language"),
       Self::Custom(error) => write!(f, "{}", error),
+    }
+  }
+}
+
+#[derive(Debug)]
+pub enum LangErrorType {
+  UnsupportedLang,
+}
+
+impl Display for LangErrorType {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      Self::UnsupportedLang => write!(f, "Unsupported language"),
     }
   }
 }

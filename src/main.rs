@@ -1,7 +1,7 @@
 mod lib;
 
+use lib::languages::{generate, Lang};
 use lib::Parser;
-use lib::languages::generate;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -18,10 +18,13 @@ fn main() {
         Ok(res) => res,
     };
     println!("{:#?}", res);
-    let code = generate(res, "js".to_string());
+    let code = generate(res, Lang::JS);
     let src = match code {
-        Err(err) => {println!("{:?}", err);"".to_string()},
-        Ok(res) => res
+        Err(err) => {
+            println!("{:?}", err);
+            "".to_string()
+        }
+        Ok(res) => res,
     };
     println!("{}", src);
 }

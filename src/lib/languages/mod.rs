@@ -4,24 +4,35 @@ use super::*;
 pub use javascript::JavaScript;
 
 pub enum Lang {
-  JS
+  JS,
+  Unknown,
 }
 
 impl Into<Lang> for String {
   fn into(self) -> Lang {
-    let _js = String::from("js");
-    match self {
-      _js => Lang::JS
+    match &self[..] {
+      "js" => Lang::JS,
+      _ => Lang::Unknown,
     }
   }
 }
 
-pub fn generate(parser: Parser, lang: String) -> Result<String, ParsingErrorType> {
+impl<'a> Into<Lang> for &'a str {
+  fn into(self) -> Lang {
+    match self {
+      "js" => Lang::JS,
+      _ => Lang::Unknown,
+    }
+  }
+}
+
+pub fn generate(parser: Parser, lang: impl Into<Lang>) -> Result<String, LangErrorType> {
   let code = match lang.into() {
-    Lang::JS => JavaScript::generate(parser)
+    Lang::JS => JavaScript::generate(parser),
+    Lang::Unknown => return Err(LangErrorType::UnsupportedLang),
   };
   match code {
     Ok(res) => return Ok(res.src),
-    Err(err) => return Err(ParsingErrorType::LangError)
+    Err(error) => return Err(error),
   }
 }

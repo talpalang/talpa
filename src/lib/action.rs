@@ -217,14 +217,14 @@ impl<'a> ParseAction<'a> {
 
   fn detect(&mut self) -> Result<(), ParsingError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
-      self.p.try_match(&[
-        (Keywords::Const, " \t\n"),
-        (Keywords::Let, " \t\n"),
-        (Keywords::Return, "} \t\n"),
-        (Keywords::Loop, "{ \t\n"),
-        (Keywords::While, " \t\n"),
-        (Keywords::For, "} \t\n"),
-        (Keywords::Break, "} \t\n"),
+      self.p.try_match(vec![
+        &Keywords::Const,
+        &Keywords::Let,
+        &Keywords::Return,
+        &Keywords::Loop,
+        &Keywords::While,
+        &Keywords::For,
+        &Keywords::Break,
       ])
     } else {
       // Matching keywords is only allowed when inside the body
@@ -251,7 +251,7 @@ impl<'a> ParseAction<'a> {
         }
         Keywords::Loop | Keywords::While | Keywords::For => {
           // Parse loop
-          let to_commit = self.parse_looper(matched.into())?;
+          let to_commit = self.parse_looper(matched.clone().into())?;
           self.commit_state(to_commit)?;
         }
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
@@ -301,7 +301,7 @@ impl<'a> ParseAction<'a> {
           detected_action = DetectedAction::Assignment;
           break;
         }
-        _ if (legal_name_char(c) || c == '.') && !name_completed => name.push(c),
+        _ if (valid_name_char(c) || c == '.') && !name_completed => name.push(c),
         c => {
           if name_completed {
             self.p.index -= 1;
@@ -429,7 +429,7 @@ impl<'a> ParseAction<'a> {
           let c = self.p.next_char();
           match c {
             Some(' ') | Some('\t') | Some('\n') => break,
-            Some(c) if legal_name_char(c) => name.push(c),
+            Some(c) if valid_name_char(c) => name.push(c),
             Some(c) => return self.p.unexpected_char(c),
             None => return self.p.unexpected_eof(),
           }

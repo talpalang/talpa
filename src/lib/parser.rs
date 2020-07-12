@@ -6,20 +6,23 @@ pub struct Parser {
   pub index: usize,
   pub contents: Vec<u8>,
   pub functions: Vec<Function>,
-  pub global_vars: Vec<Variable>,
+  pub vars: Vec<Variable>,
+  pub structs: Vec<Struct>,
 }
 
 #[derive(Debug)]
 pub struct SimpleParserOutput<'a> {
   pub functions: &'a Vec<Function>,
-  pub global_vars: &'a Vec<Variable>,
+  pub vars: &'a Vec<Variable>,
+  pub structs: &'a Vec<Struct>,
 }
 
 impl fmt::Debug for Parser {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple_parser = SimpleParserOutput {
       functions: &self.functions,
-      global_vars: &self.global_vars,
+      vars: &self.vars,
+      structs: &self.structs,
     };
     writeln!(f, "{:#?}", simple_parser)
   }
@@ -127,7 +130,8 @@ impl Parser {
       index: 0,
       contents: tokens,
       functions: vec![],
-      global_vars: vec![],
+      vars: vec![],
+      structs: vec![],
     };
     parser.parse_nothing()?;
     Ok(parser)
@@ -187,28 +191,24 @@ impl Parser {
   }
 
   /// Tries to match something
-  /// The second string for the options array is for checking if the matched value has a certen surfix
-  /// The next char after the matched value will be checked against it
-  /// For example surfix "abc" will match the following matched string surfix: 'a', 'b' or 'c'
-  pub fn try_match<'a, T>(&mut self, options: &[(T, &'static str)]) -> Option<T>
+  pub fn try_match<'a, T>(&mut self, options: Vec<&'a T>) -> Option<&'a T>
   where
-    T: Into<&'a str> + Copy,
+    T: MatchString,
   {
     if options.len() == 0 {
       return None;
     }
 
-    let mut surfix_map: HashMap<&'a str, &'static str> = HashMap::with_capacity(options.len());
+    let mut meta_map: HashMap<&'static str, &'a T> = HashMap::with_capacity(options.len());
     let mut options_vec: Vec<&str> = vec![];
-    for option in options.iter() {
-      if option.0.into().len() == 0 {
+
+    for option in options {
+      let option_str = option.get_string();
+      if option_str.len() == 0 {
         continue;
       }
-      options_vec.push(&option.0.into());
-
-      if option.1.len() > 0 {
-        surfix_map.insert(option.0.into(), option.1);
-      }
+      options_vec.push(option_str);
+      meta_map.insert(option_str, option);
     }
 
     let mut char_count: usize = 0;
@@ -225,24 +225,24 @@ impl Parser {
               continue;
             }
 
-            if let Some(must_match_surfix) = surfix_map.get(option) {
-              // This option contains a surfix match, lets test it here
-              let next_char = self.seek_next_char();
-              if let None = next_char {
-                continue;
-              } else if !must_match_surfix.contains(next_char.unwrap()) {
-                continue;
-              }
-            }
+            match meta_map.get(option) {
+              Some(meta) => {
+                if let Some(next_char_needs_to_match) = meta.after() {
+                  // This option contains a surfix match, test test it here
+                  let next_char = self.seek_next_char();
+                  if let None = next_char {
+                    continue;
+                  } else if !next_char_needs_to_match.contains(next_char.unwrap()) {
+                    continue;
+                  }
+                }
 
-            for opt in options {
-              if opt.0.into() == option {
-                return Some(opt.0);
+                return Some(meta)
               }
+              None => panic!("An error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
             }
-            return None;
           }
-          _ => continue,
+          _ => {}
         }
       }
       if new_options_vec.len() == 0 {
@@ -263,22 +263,26 @@ impl Parser {
     self.index -= 1;
     while let Some(_) = self.next_while(" \n\t") {
       self.index -= 1;
-      match self.try_match(&[(Keywords::Fn, " \t\n"), (Keywords::Const, " \t\n")]) {
+      match self.try_match(vec![&Keywords::Fn, &Keywords::Const, &Keywords::Struct]) {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;
-          self.global_vars.push(parsed_variable);
+          self.vars.push(parsed_variable);
         }
         Some(Keywords::Fn) => {
           let parsed_function = ParseFunction::start(self)?;
           self.functions.push(parsed_function);
         }
+        Some(Keywords::Struct) => {
+          let parsed_struct = parse_struct(self, false, false)?;
+          self.structs.push(parsed_struct);
+        }
         _ => {
           // could be newline/tab/whitespace
-          if let Some(c) = self.next_char() {
-            return self.unexpected_char(c);
+          return if let Some(c) = self.next_char() {
+            self.unexpected_char(c)
           } else {
-            return self.unexpected_eof();
-          }
+            self.unexpected_eof()
+          };
         }
       }
     }

@@ -103,7 +103,7 @@ impl<'a> ParseFunction<'a> {
             self.change_state(ParseFunctionState::Arg(ParseFunctionStateArg::new()))?;
             // end of function name, start parsing arguments
           }
-          c if legal_name_char(c) => {
+          c if valid_name_char(c) => {
             // Parsing the function name
             if let Some(function_name) = &mut meta.function_name {
               function_name.push(c);
@@ -134,10 +134,10 @@ impl<'a> ParseFunction<'a> {
           }, // end of argument, start parsing response
           _ if !meta.parsing_name => {
             // Parse the argument type
-            meta.type_ = Some(ParseType::start(self.p, true)?);
+            meta.type_ = Some(parse_type(self.p, true)?);
             self.change_state(ParseFunctionState::AfterArg)?;
           }
-          c if legal_name_char(c) => {
+          c if valid_name_char(c) => {
             // Parsing the function name
             meta.name.push(c);
           }

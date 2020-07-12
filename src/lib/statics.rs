@@ -3,6 +3,10 @@ use super::*;
 pub static VALID_NAME_CHARS: &'static str =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
 
+pub fn valid_name_char(c: char) -> bool {
+  VALID_NAME_CHARS.contains(c)
+}
+
 #[derive(Debug)]
 pub struct NameBuilder(Vec<u8>);
 
@@ -10,6 +14,8 @@ impl NameBuilder {
   pub fn new() -> Self {
     Self(vec![])
   }
+  /// new_with_char creates a new name builder with a start char.
+  /// you will need to check first_char if it's a valid name char
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }
@@ -49,10 +55,6 @@ impl NameBuilder {
   }
 }
 
-pub fn legal_name_char(c: char) -> bool {
-  VALID_NAME_CHARS.contains(c)
-}
-
 #[derive(Clone, Copy)]
 pub enum Keywords {
   Fn,
@@ -69,8 +71,8 @@ pub enum Keywords {
   Continue,
 }
 
-impl Into<&'static str> for Keywords {
-  fn into(self) -> &'static str {
+impl MatchString for Keywords {
+  fn get_string(&self) -> &'static str {
     match self {
       Self::Fn => "fn",
       Self::Let => "let",
@@ -85,5 +87,14 @@ impl Into<&'static str> for Keywords {
       Self::Return => "return",
       Self::Continue => "continue",
     }
+  }
+  fn after(&self) -> Option<&'static str> {
+    Some(" \t\n")
+  }
+}
+
+impl<'a> From<&'a Keywords> for &'static str {
+  fn from(keywords: &'a Keywords) -> &'static str {
+    keywords.into()
   }
 }

@@ -30,7 +30,7 @@ pub fn parse_var<'a>(
   let var_type = if let Some(type_) = var_type_option {
     type_
   } else {
-    let to_match = &[(Keywords::Const, " \t\n"), (Keywords::Let, " \t\n")];
+    let to_match = vec![&Keywords::Const, &Keywords::Let];
     let match_result = p.try_match(to_match);
     if let None = match_result {
       return p.unexpected_char(*p.contents.get(p.index).unwrap() as char);
@@ -48,7 +48,7 @@ pub fn parse_var<'a>(
   loop {
     if let Some(c) = next_char {
       match c {
-        _ if legal_name_char(c) => name.push(c),
+        _ if valid_name_char(c) => name.push(c),
         ' ' | '\t' | '\n' => break,
         ':' | '=' => {
           p.index -= 1;
@@ -68,7 +68,7 @@ pub fn parse_var<'a>(
     return p.unexpected_eof();
   }
   if next_char.unwrap() == ':' {
-    data_type = Some(ParseType::start(p, true)?);
+    data_type = Some(parse_type(p, true)?);
     next_char = p.next_while(" \t\n");
   }
 

@@ -1,7 +1,7 @@
 # Talpa *a General Programming Language*
 
 > A WIP programming language designed to be compiled into many other languages.
-> For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235). 
+> For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235).
 
 Currently, the language contains very few working features. When adding new features, the project follows [test-driven development](https://en.wikipedia.org/wiki/Test-driven_development) practices.
 
@@ -22,11 +22,11 @@ This roadmap is used to track the progress on the project. If you add a feature 
           * [x] Don't fail on these types
           * [ ] Parse these types into something usable instaid of a string
         * [ ]  Inline types
-          * [ ] structs `struct{}`
-          * [ ] arrays `[]string`
+          * [x] structs `struct{}`
+          * [x] arrays `[]string`
           * [ ] enums `enum{}`
         * [ ] global types
-          * [ ] structs `struct foo {}`
+          * [x] structs `struct foo {}`
           * [ ] enums `enum foo {}`
           * [ ] custom types `type foo = []bar`
       * [x]  Actions

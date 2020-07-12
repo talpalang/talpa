@@ -2,9 +2,9 @@
 
 > This document is incomplete
 
-Talpa was designed with a unique capability to compile for multiple platforms from a single codebase. 
-To do this, Talpa generates a tree which can be parsed into a language with a language compile structure. 
-These structures implement functions that parse objects from the tree into the source code for that language. 
+Talpa was designed with a unique capability to compile for multiple platforms from a single codebase.
+To do this, Talpa generates a tree which can be parsed into a language with a language compile structure.
+These structures implement functions that parse objects from the tree into the source code for that language.
 
 To code language support for Talpa, you will need to know a few things.
 

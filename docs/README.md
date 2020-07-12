@@ -6,8 +6,9 @@
 ## Supported Features
 
 - [Functions](Functions.md)
-
+- [Types](Types.md)
 
 ## Developer Docs
 
-- [Language Support](language.md)
+- [Language Support](Language.md)
+- [Compiler inner workings](Compiler.md)

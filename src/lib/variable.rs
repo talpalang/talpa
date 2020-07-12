@@ -48,7 +48,7 @@ pub fn parse_var<'a>(
   loop {
     if let Some(c) = next_char {
       match c {
-        _ if legal_name_char(c) => name.push(c),
+        _ if valid_name_char(c) => name.push(c),
         ' ' | '\t' | '\n' => break,
         ':' | '=' => {
           p.index -= 1;

@@ -91,7 +91,7 @@ fn test_struct_with_inner_struct_3() {
 
 #[test]
 fn test_invalid_struct_data() {
-  parse_str(
+  parse_str_fail(
     r#"
       struct foo {
         bar

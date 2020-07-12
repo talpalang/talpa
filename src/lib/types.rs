@@ -95,6 +95,11 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Pars
     p.index -= 1;
   }
 
+  if let None = p.next_while(" \t\n") {
+    return p.unexpected_eof();
+  }
+  p.index -= 1;
+
   match p.try_match(vec![
     &DetectType::Int,
     &DetectType::I8,
@@ -111,10 +116,20 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Pars
     &DetectType::Struct,
     &DetectType::Array,
   ]) {
+    Some(&DetectType::Array) => {
+      let res = parse_type(p, false)?;
+      return Ok(Type::Array(Box::new(res)));
+    }
     Some(matched_type) => {
       let add_to_substract = if let Some(c) = p.next_char() {
-        if !legal_name_char(c) {
+        if let &DetectType::Struct = matched_type {
+          if c == '{' || c == ' ' || c == '\n' {
+            let res = parse_struct(p, true, c == '{')?;
+            return Ok(Type::Struct(res));
+          }
+        } else if !valid_name_char(c) {
           if let Some(v) = matched_type.to_type() {
+            p.index -= 1;
             return Ok(v);
           }
         }
@@ -130,13 +145,11 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Pars
   let mut type_name = NameBuilder::new();
   while let Some(c) = p.next_char() {
     match c {
-      '=' | ')' | '}' | ',' => {
+      _ if valid_name_char(c) => type_name.push(c),
+      _ => {
         p.index -= 1;
         let type_string = type_name.to_string(p)?;
         return Ok(Type::TypeRef(type_string));
-      }
-      _ => {
-        type_name.push(c);
       }
     }
   }
@@ -151,7 +164,15 @@ pub struct Struct {
   fields: HashMap<String, Type>,
 }
 
-pub fn parse_struct<'a>(p: &'a mut Parser, inline: bool) -> Result<Struct, ParsingError> {
+pub fn parse_struct<'a>(
+  p: &'a mut Parser,
+  inline: bool,
+  back_one: bool,
+) -> Result<Struct, ParsingError> {
+  if back_one {
+    p.index -= 1;
+  }
+
   let mut res = Struct {
     name: None,
     fields: HashMap::new(),
@@ -166,7 +187,7 @@ pub fn parse_struct<'a>(p: &'a mut Parser, inline: bool) -> Result<Struct, Parsi
           "Struct requires name for example: \"struct foo {}\"",
         ))
       }
-      Some(c) if !legal_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
       Some(c) => c,
     };
     let mut struct_name = NameBuilder::new_with_char(first_name_char);
@@ -179,7 +200,7 @@ pub fn parse_struct<'a>(p: &'a mut Parser, inline: bool) -> Result<Struct, Parsi
           return p.unexpected_char(c);
         }
         '{' => break,
-        _ if legal_name_char(c) => struct_name.push(c),
+        _ if valid_name_char(c) => struct_name.push(c),
         _ => return p.unexpected_char(c),
       }
     }
@@ -194,26 +215,26 @@ pub fn parse_struct<'a>(p: &'a mut Parser, inline: bool) -> Result<Struct, Parsi
     }
   }
 
-  // Parse the struct fields
+  // Parse struct fields
   loop {
-    // Parse the field name
+    // Parse field name
     let first_name_char = match p.next_while(" \t\n") {
       None => return p.unexpected_eof(),
       Some('}') => break, // end of struct
-      Some(c) if !legal_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
       Some(c) => c,
     };
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
     while let Some(c) = p.next_char() {
       match c {
-        _ if legal_name_char(c) => field_name_builder.push(c),
+        _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
         _ => return p.unexpected_char(c),
       }
     }
     let field_name = field_name_builder.to_string(p)?;
 
-    // Parse the variable assignment
+    // Parse field type
     if let None = p.next_while(" \t") {
       return p.unexpected_eof();
     };

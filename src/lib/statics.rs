@@ -3,6 +3,10 @@ use super::*;
 pub static VALID_NAME_CHARS: &'static str =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
 
+pub fn valid_name_char(c: char) -> bool {
+  VALID_NAME_CHARS.contains(c)
+}
+
 #[derive(Debug)]
 pub struct NameBuilder(Vec<u8>);
 
@@ -49,10 +53,6 @@ impl NameBuilder {
   pub fn push(&mut self, value: char) {
     self.0.push(value as u8);
   }
-}
-
-pub fn legal_name_char(c: char) -> bool {
-  VALID_NAME_CHARS.contains(c)
 }
 
 #[derive(Clone, Copy)]

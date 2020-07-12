@@ -17,7 +17,7 @@ pub use error::{LangErrorType, ParsingError, ParsingErrorType};
 pub use function::{Function, ParseFunction};
 pub use numbers::{Number, NumberParser, NumberTypes};
 pub use parser::{CodeLocation, Parser};
-pub use statics::{legal_name_char, Keywords, NameBuilder};
+pub use statics::{valid_name_char, Keywords, NameBuilder};
 pub use std::collections::HashMap;
 pub use std::fmt::Display;
 pub use strings::{parse_static_str, String_};

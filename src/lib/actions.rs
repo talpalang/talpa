@@ -39,7 +39,7 @@ impl<'a> ParseActions<'a> {
             // Ignore these chars
           }
           '}' => return Ok(()),
-          _ if legal_name_char(c) => {
+          _ if valid_name_char(c) => {
             let action = ParseAction::start(self.p, true, ActionToExpect::ActionInBody)?;
             self.res.list.push(action);
 

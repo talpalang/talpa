@@ -273,7 +273,7 @@ impl Parser {
           self.functions.push(parsed_function);
         }
         Some(Keywords::Struct) => {
-          let parsed_struct = parse_struct(self, false)?;
+          let parsed_struct = parse_struct(self, false, false)?;
           self.structs.push(parsed_struct);
         }
         _ => {

@@ -301,7 +301,7 @@ impl<'a> ParseAction<'a> {
           detected_action = DetectedAction::Assignment;
           break;
         }
-        _ if (legal_name_char(c) || c == '.') && !name_completed => name.push(c),
+        _ if (valid_name_char(c) || c == '.') && !name_completed => name.push(c),
         c => {
           if name_completed {
             self.p.index -= 1;
@@ -429,7 +429,7 @@ impl<'a> ParseAction<'a> {
           let c = self.p.next_char();
           match c {
             Some(' ') | Some('\t') | Some('\n') => break,
-            Some(c) if legal_name_char(c) => name.push(c),
+            Some(c) if valid_name_char(c) => name.push(c),
             Some(c) => return self.p.unexpected_char(c),
             None => return self.p.unexpected_eof(),
           }

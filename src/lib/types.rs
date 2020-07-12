@@ -28,13 +28,49 @@ pub enum Type {
   Struct(Struct),
   Array(Box<Type>),
 
-  /// This is the most un-unusable version of a type, it's just a string with the type
-  /// This should not show up in stage 3 (tokens to a language) and it should be handled as critial error
-  TypeString(String),
+  /// This references to another type
+  TypeRef(String),
 }
 
-impl Into<&'static str> for Type {
-  fn into(self) -> &'static str {
+pub enum DetectType {
+  Int,
+  I8,
+  I16,
+  I32,
+  I64,
+  UInt,
+  U8,
+  U16,
+  U32,
+  U64,
+  String,
+  Char,
+  Struct,
+  Array,
+}
+
+impl DetectType {
+  fn to_type(&self) -> Option<Type> {
+    Some(match self {
+      Self::Int => Type::Int,
+      Self::I8 => Type::I8,
+      Self::I16 => Type::I16,
+      Self::I32 => Type::I32,
+      Self::I64 => Type::I64,
+      Self::UInt => Type::UInt,
+      Self::U8 => Type::U8,
+      Self::U16 => Type::U16,
+      Self::U32 => Type::U32,
+      Self::U64 => Type::U64,
+      Self::String => Type::String,
+      Self::Char => Type::Char,
+      Self::Array | Self::Struct => return None,
+    })
+  }
+}
+
+impl MatchString for DetectType {
+  fn get_string(&self) -> &'static str {
     match self {
       Self::Int => "int",
       Self::I8 => "i8",
@@ -48,14 +84,9 @@ impl Into<&'static str> for Type {
       Self::U64 => "u64",
       Self::String => "string",
       Self::Char => "char",
-      Self::Struct(_) | Self::Array(_) | Self::TypeString(_) => "Unknown",
+      Self::Array => "[]",
+      Self::Struct => "struct",
     }
-  }
-}
-
-impl Type {
-  fn empty() -> Self {
-    Self::TypeString(String::new())
   }
 }
 
@@ -65,30 +96,33 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Pars
   }
 
   match p.try_match(vec![
-    (&Type::Int, Type::Int.into(), ""),
-    (&Type::I8, Type::I8.into(), ""),
-    (&Type::I16, Type::I16.into(), ""),
-    (&Type::I32, Type::I32.into(), ""),
-    (&Type::I64, Type::I64.into(), ""),
-    (&Type::UInt, Type::UInt.into(), ""),
-    (&Type::U8, Type::U8.into(), ""),
-    (&Type::U16, Type::U16.into(), ""),
-    (&Type::U32, Type::U32.into(), ""),
-    (&Type::U64, Type::U64.into(), ""),
-    (&Type::String, Type::String.into(), ""),
-    (&Type::Char, Type::Char.into(), ""),
+    &DetectType::Int,
+    &DetectType::I8,
+    &DetectType::I16,
+    &DetectType::I32,
+    &DetectType::I64,
+    &DetectType::UInt,
+    &DetectType::U8,
+    &DetectType::U16,
+    &DetectType::U32,
+    &DetectType::U64,
+    &DetectType::String,
+    &DetectType::Char,
+    &DetectType::Struct,
+    &DetectType::Array,
   ]) {
     Some(matched_type) => {
       let add_to_substract = if let Some(c) = p.next_char() {
         if !legal_name_char(c) {
-          return Ok(matched_type.clone());
+          if let Some(v) = matched_type.to_type() {
+            return Ok(v);
+          }
         }
         1
       } else {
         0
       };
-      let name: &'static str = Type::U64.into();
-      p.index -= name.len() + add_to_substract;
+      p.index -= matched_type.get_string().len() + add_to_substract;
     }
     _ => {}
   };
@@ -99,7 +133,7 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Pars
       '=' | ')' | '}' | ',' => {
         p.index -= 1;
         let type_string = type_name.to_string(p)?;
-        return Ok(Type::TypeString(type_string));
+        return Ok(Type::TypeRef(type_string));
       }
       _ => {
         type_name.push(c);

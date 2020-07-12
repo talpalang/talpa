@@ -71,8 +71,8 @@ pub enum Keywords {
   Continue,
 }
 
-impl Into<&'static str> for Keywords {
-  fn into(self) -> &'static str {
+impl MatchString for Keywords {
+  fn get_string(&self) -> &'static str {
     match self {
       Self::Fn => "fn",
       Self::Let => "let",
@@ -87,6 +87,9 @@ impl Into<&'static str> for Keywords {
       Self::Return => "return",
       Self::Continue => "continue",
     }
+  }
+  fn after(&self) -> Option<&'static str> {
+    Some(" \t\n")
   }
 }
 

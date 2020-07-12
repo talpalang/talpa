@@ -8,6 +8,7 @@ mod parser;
 pub mod statics;
 mod strings;
 mod types;
+mod utils;
 mod variable;
 
 pub use action::{Action, ActionToExpect, ParseAction, ParseActionState};
@@ -21,6 +22,7 @@ pub use std::collections::HashMap;
 pub use std::fmt::Display;
 pub use strings::{parse_static_str, String_};
 pub use types::{parse_struct, parse_type, Struct, Type};
+pub use utils::MatchString;
 pub use variable::{parse_var, VarType, Variable};
 
 #[cfg(test)]

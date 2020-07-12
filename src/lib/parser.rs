@@ -239,7 +239,7 @@ impl Parser {
 
                 return Some(meta)
               }
-              None => panic!("This should not happen, please create an issue with example code so we can resolve this"),
+              None => panic!("An error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
             }
           }
           _ => {}

@@ -6,7 +6,7 @@ pub struct JavaScript {
 
 impl JavaScript {
   // Generate javascript code using tokens from parser
-  pub fn generate(parser: Parser) -> Result<Self, TargetError> {
+  pub fn generate(parser: Parser) -> Result<Self, CodeError> {
     let mut code = Self { src: String::new() };
     // define functions
     for func in parser.functions {

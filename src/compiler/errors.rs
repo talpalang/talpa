@@ -56,14 +56,14 @@ impl Display for CodeError {
 
 pub enum StateError {
   Tokenize(TokenizeError),
-  Target(TargetError),
+  // Target(TargetError),
 }
 
 impl Display for StateError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::Tokenize(error) => write!(f, "{}", error),
-      Self::Target(error) => write!(f, "{}", error),
+      // Self::Target(error) => write!(f, "{}", error),
     }
   }
 }
@@ -91,15 +91,21 @@ impl Display for TokenizeError {
   }
 }
 
-#[derive(Debug)]
-pub enum TargetError {
-  UnsupportedLang,
-}
+/*
 
-impl Display for TargetError {
-  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::UnsupportedLang => write!(f, "Unsupported language"),
-    }
-  }
-}
+Commented out for now as there are not yet any target errors
+
+*/
+
+// #[derive(Debug)]
+// pub enum TargetError {
+//   UnsupportedLang,
+// }
+
+// impl Display for TargetError {
+//   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+//     match self {
+//       Self::UnsupportedLang => write!(f, "Unsupported language"),
+//     }
+//   }
+// }

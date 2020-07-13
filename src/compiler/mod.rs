@@ -31,18 +31,11 @@ impl Compiler {
     file.read_to_end(&mut contents).unwrap();
 
     let res = Parser::parse(contents)?;
+    println!("Debug output:");
     println!("{:#?}", res);
 
-    let code = generate(res, c.options.lang);
-    let src = match code {
-      Err(err) => {
-        // TODO:
-        // Make it so generate returns a CodeError so we can return it here instaid of printing it
-        println!("{:?}", err);
-        std::process::exit(1);
-      }
-      Ok(res) => res,
-    };
+    let src = generate(res, c.options.lang)?;
+    println!("Parse output:");
     println!("{}", src);
     Ok(())
   }

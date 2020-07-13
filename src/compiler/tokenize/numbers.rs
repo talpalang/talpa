@@ -33,7 +33,7 @@ impl<'a> NumberParser<'a> {
   pub fn new_without_starting(p: &'a mut Parser, buff: Vec<u8>) -> Self {
     Self { p, buff }
   }
-  pub fn result(&self, type_: NumberTypes) -> Result<Number, CodeError> {
+  pub fn result(&self, type_: NumberTypes) -> Result<Number, LocationError> {
     Ok(match type_ {
       // NumberTypes::Float => Number::Float(self.to_float()?),
       // NumberTypes::Int => Number::Int(self.to_int()?),
@@ -46,19 +46,19 @@ impl<'a> NumberParser<'a> {
       }
     })
   }
-  fn to_float(&self) -> Result<f64, CodeError> {
+  fn to_float(&self) -> Result<f64, LocationError> {
     self.err(self.to_string()?.parse::<f64>())
   }
-  fn to_int(&self) -> Result<i64, CodeError> {
+  fn to_int(&self) -> Result<i64, LocationError> {
     self.err(self.to_string()?.parse::<i64>())
   }
-  fn err<T, E>(&self, err: Result<T, E>) -> Result<T, CodeError> {
+  fn err<T, E>(&self, err: Result<T, E>) -> Result<T, LocationError> {
     match err {
       Ok(v) => Ok(v),
       Err(_) => self.p.error(TokenizeError::Custom("Invalid number")),
     }
   }
-  fn to_string(&self) -> Result<String, CodeError> {
+  fn to_string(&self) -> Result<String, LocationError> {
     self.err(String::from_utf8(self.buff.clone()))
   }
 

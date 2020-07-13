@@ -1,6 +1,6 @@
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct CodeLocation {
   pub file_name: Option<String>,
-  pub x: usize,
-  pub y: usize,
+  pub x: Option<usize>,
+  pub y: Option<usize>,
 }

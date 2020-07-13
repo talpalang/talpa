@@ -23,7 +23,7 @@ impl Into<Action> for Variable {
 pub fn parse_var<'a>(
   p: &'a mut Parser,
   var_type_option: Option<VarType>,
-) -> Result<Variable, CodeError> {
+) -> Result<Variable, LocationError> {
   let mut name = NameBuilder::new();
   let mut data_type: Option<Type> = None;
 
@@ -33,7 +33,7 @@ pub fn parse_var<'a>(
     let to_match = vec![&Keywords::Const, &Keywords::Let];
     let match_result = p.try_match(to_match);
     if let None = match_result {
-      return p.unexpected_char(*p.contents.get(p.index).unwrap() as char);
+      return p.unexpected_char(p.last_char());
     }
 
     if let Keywords::Const = match_result.unwrap() {

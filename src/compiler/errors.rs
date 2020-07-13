@@ -3,72 +3,95 @@ use core::fmt::Display;
 use files::CodeLocation;
 use std::error::Error;
 
-pub struct CodeError {
+#[derive(Clone)]
+pub struct LocationError {
   pub location: CodeLocation,
   pub error_type: StateError,
   pub prev_line: Option<String>,
-  pub line: String,
+  pub line: Option<String>,
   pub next_line: Option<String>,
 }
 
-impl CodeError {
+impl LocationError {
   fn err(&self) -> String {
     let mut output: Vec<String> = vec![];
-    let y = self.location.y;
 
-    if let Some(line) = self.prev_line.clone() {
-      output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
-    }
+    let err = self.clone();
 
-    let mut spacing = String::from("");
-    for _ in 0..self.location.x + y.to_string().len() + format!("{}", y).len() + 1 {
-      spacing += " ";
-    }
-    output.push(format!(
-      "{}: {}\n{}^-- {}",
-      y,
-      self.line.replace("\t", "  "),
-      spacing,
-      self.error_type,
-    ));
+    match (err.line, err.location.y, err.location.file_name) {
+      (Some(line), Some(y), file_name) => {
+        if let Some(file_name) = file_name {
+          output.push(format!("Error in file: {}", file_name));
+        } else {
+          output.push("Error:".into());
+        }
 
-    if let Some(line) = self.next_line.clone() {
-      output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
+        let x = if let Some(x) = err.location.x { x } else { 0 };
+
+        if let Some(line) = err.prev_line.clone() {
+          output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
+        }
+
+        let mut spacing = String::from("");
+        for _ in 0..x + y.to_string().len() + format!("{}", y).len() + 1 {
+          spacing += " ";
+        }
+        output.push(format!(
+          "{}: {}\n{}^-- {}",
+          y,
+          line.replace("\t", "  "),
+          spacing,
+          err.error_type,
+        ));
+
+        if let Some(line) = err.next_line.clone() {
+          output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
+        }
+      }
+      (_, _, Some(file_name)) => {
+        output.push(format!("Error in file: {}\n{}", file_name, err.error_type));
+      }
+      _ => {
+        output.push(format!("Error:\n{}", err.error_type));
+      }
     }
 
     format!("{}", output.join("\n"))
   }
 }
 
-impl Error for CodeError {}
+impl Error for LocationError {}
 
-impl std::fmt::Debug for CodeError {
+impl std::fmt::Debug for LocationError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.err())
   }
 }
 
-impl Display for CodeError {
+impl Display for LocationError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(f, "{}", self.err())
   }
 }
 
+#[derive(Clone)]
 pub enum StateError {
   Tokenize(TokenizeError),
   // Target(TargetError),
+  IO(IOError),
 }
 
 impl Display for StateError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::Tokenize(error) => write!(f, "{}", error),
+      Self::IO(error) => write!(f, "IO error: {}", error),
       // Self::Target(error) => write!(f, "{}", error),
     }
   }
 }
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum TokenizeError {
   IncompletedArgument,
   UnexpectedEOF,
@@ -76,6 +99,12 @@ pub enum TokenizeError {
   UnexpectedResult,
   InvalidNameChar,
   Custom(&'static str),
+}
+
+impl Into<StateError> for TokenizeError {
+  fn into(self) -> StateError {
+    StateError::Tokenize(self)
+  }
 }
 
 impl Display for TokenizeError {
@@ -91,13 +120,32 @@ impl Display for TokenizeError {
   }
 }
 
+#[derive(Clone)]
+pub enum IOError {
+  IO(String),
+}
+
+impl Into<StateError> for IOError {
+  fn into(self) -> StateError {
+    StateError::IO(self)
+  }
+}
+
+impl Display for IOError {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      Self::IO(error) => write!(f, "{}", error),
+    }
+  }
+}
+
 /*
 
 Commented out for now as there are not yet any target errors
 
 */
 
-// #[derive(Debug)]
+// #[derive(Clone)]
 // pub enum TargetError {
 //   UnsupportedLang,
 // }

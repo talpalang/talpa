@@ -17,7 +17,7 @@ pub use actions::{Actions, ParseActions};
 pub use files::CodeLocation;
 pub use function::{Function, ParseFunction};
 pub use numbers::{Number, NumberParser, NumberTypes};
-pub use parser::Parser;
+pub use parser::{DataType, Parser};
 pub use statics::{valid_name_char, Keywords, NameBuilder};
 pub use std::collections::HashMap;
 pub use std::fmt::Display;

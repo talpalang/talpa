@@ -7,7 +7,7 @@ pub enum Lang {
   JS,
 }
 
-pub fn generate(parser: Parser, lang: Lang) -> Result<String, CodeError> {
+pub fn generate(parser: Parser, lang: Lang) -> Result<String, LocationError> {
   let code = match lang {
     Lang::JS => JavaScript::generate(parser),
   };

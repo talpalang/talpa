@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::fmt;
 
 pub struct Parser {
+  contents: Vec<u8>,
+  file_name: Option<String>,
   pub index: usize,
-  pub contents: Vec<u8>,
   pub functions: Vec<Function>,
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
@@ -28,21 +29,98 @@ impl fmt::Debug for Parser {
   }
 }
 
+pub enum DataType<'a> {
+  /// Use a file as input to start reading from
+  File(&'a str),
+
+  /// Parse directly from bytes
+  /// Currently only used for testing so we allow it to be dead code for now
+  ///
+  /// TODO: Let this not be dead code :)
+  #[allow(dead_code)]
+  Direct(Vec<u8>),
+}
+
 impl Parser {
-  pub fn error<T>(&self, error_type: TokenizeError) -> Result<T, CodeError> {
-    self.custom_error(error_type, None)
+  pub fn parse(contents: DataType) -> Result<Self, LocationError> {
+    let mut parser = Self {
+      index: 0,
+      contents: vec![],
+      functions: vec![],
+      vars: vec![],
+      structs: vec![],
+      file_name: None,
+    };
+
+    let mut tokens = match contents {
+      DataType::File(location) => {
+        let mut file = match File::open(location) {
+          Ok(f) => f,
+          Err(err) => return parser.custom_error(IOError::IO(format!("{}", err)), None, true),
+        };
+        let mut contents: Vec<u8> = vec![];
+        file.read_to_end(&mut contents).unwrap();
+        contents
+      }
+      DataType::Direct(bytes) => bytes,
+    };
+
+    let mut chars_to_remove: Vec<usize> = vec![];
+
+    // Remove all the '\r' from the code because we currently do not support it
+    for (i, c) in tokens.iter().enumerate().rev() {
+      if *c as char == '\r' {
+        chars_to_remove.push(i);
+      }
+    }
+    for i in chars_to_remove {
+      tokens.remove(i);
+    }
+
+    parser.contents = tokens;
+
+    parser.parse_nothing()?;
+    Ok(parser)
   }
-  pub fn unexpected_char<T>(&self, c: char) -> Result<T, CodeError> {
+
+  pub fn error<T, Y>(&self, error: Y) -> Result<T, LocationError>
+  where
+    Y: Into<StateError>,
+  {
+    self.custom_error(error, None, false)
+  }
+
+  pub fn unexpected_char<T>(&self, c: char) -> Result<T, LocationError> {
     self.error(TokenizeError::UnexpectedChar(c))
   }
-  pub fn unexpected_eof<T>(&self) -> Result<T, CodeError> {
+
+  pub fn unexpected_eof<T>(&self) -> Result<T, LocationError> {
     self.error(TokenizeError::UnexpectedEOF)
   }
-  pub fn custom_error<T>(
+
+  pub fn custom_error<T, Y>(
     &self,
-    error_type: TokenizeError,
+    error: Y,
     file_char_number: Option<usize>,
-  ) -> Result<T, CodeError> {
+    only_file_name: bool,
+  ) -> Result<T, LocationError>
+  where
+    Y: Into<StateError>,
+  {
+    if only_file_name {
+      return Err(LocationError {
+        location: CodeLocation {
+          file_name: self.file_name.clone(),
+          y: None,
+          x: None,
+        },
+        error_type: error.into(),
+        prev_line: None,
+        line: None,
+        next_line: None,
+      });
+    }
+
     let use_index = if let Some(index) = file_char_number {
       index
     } else {
@@ -105,37 +183,29 @@ impl Parser {
       None
     };
 
-    let res = CodeError {
+    Err(LocationError {
       location: CodeLocation {
-        file_name: None,
-        y: line_number,
-        x: current_line_position,
+        file_name: self.file_name.clone(),
+        y: Some(line_number),
+        x: Some(current_line_position),
       },
-      error_type: StateError::Tokenize(error_type),
+      error_type: error.into(),
       prev_line,
-      line: String::from_utf8(current_line).unwrap(),
+      line: Some(String::from_utf8(current_line).unwrap()),
       next_line: next_line,
-    };
-    Err(res)
+    })
   }
-  pub fn parse(contents: impl Into<Vec<u8>>) -> Result<Self, CodeError> {
-    // this removes \r as it seems to cause problems during parsing
-    let mut tokens = contents.into();
-    for i in 0..tokens.len() {
-      if let Some(&13) = tokens.get(i) {
-        tokens.remove(i);
-      }
+
+  pub fn last_char<'a>(&'a self) -> char {
+    if self.index == 0 {
+      // There aren't any chars read yet return 0
+      // This is not really anywhere used so we can better return null than to return an option
+      // Just overcomplicates things when it issn't needed
+      return 0 as char;
     }
-    let mut parser = Self {
-      index: 0,
-      contents: tokens,
-      functions: vec![],
-      vars: vec![],
-      structs: vec![],
-    };
-    parser.parse_nothing()?;
-    Ok(parser)
+    return *self.contents.get(self.index - 1).unwrap() as char;
   }
+
   pub fn next_char(&mut self) -> Option<char> {
     let letter = *self.contents.get(self.index)? as char;
     self.index += 1;
@@ -177,10 +247,12 @@ impl Parser {
       _ => return Some(letter),
     }
   }
+
   fn seek_next_char(&mut self) -> Option<char> {
     let letter = self.contents.get(self.index)?;
     Some(*letter as char)
   }
+
   pub fn next_while(&mut self, chars: &'static str) -> Option<char> {
     while let Some(c) = self.next_char() {
       if !chars.contains(c) {
@@ -256,7 +328,8 @@ impl Parser {
     self.index -= char_count + 1;
     None
   }
-  fn parse_nothing(&mut self) -> Result<(), CodeError> {
+
+  fn parse_nothing(&mut self) -> Result<(), LocationError> {
     if let None = self.next_while(" \n\t") {
       return Ok(());
     }
@@ -289,7 +362,7 @@ impl Parser {
     Ok(())
   }
 
-  pub fn expect(&mut self, text: &str) -> Result<(), CodeError> {
+  pub fn expect(&mut self, text: &str) -> Result<(), LocationError> {
     for letter in text.chars() {
       match self.next_char() {
         Some(v) if v == letter => {}

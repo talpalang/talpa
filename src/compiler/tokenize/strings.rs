@@ -11,7 +11,7 @@ impl Into<Action> for String_ {
   }
 }
 
-pub fn parse_static_str<'a>(p: &'a mut Parser) -> Result<String_, CodeError> {
+pub fn parse_static_str<'a>(p: &'a mut Parser) -> Result<String_, LocationError> {
   let mut res = String_ {
     content: String::new(),
   };

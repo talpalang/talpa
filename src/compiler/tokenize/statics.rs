@@ -29,7 +29,7 @@ impl NameBuilder {
     let parser = NumberParser::new_without_starting(p, self.0.clone());
     Some(parser)
   }
-  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, CodeError> {
+  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, LocationError> {
     if self.len() == 0 {
       return Ok(String::new());
     }

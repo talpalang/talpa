@@ -10,7 +10,8 @@ use std::io::prelude::*;
 pub use target::Lang;
 use tokenize::Parser;
 pub use tokenize::{
-  Action, ActionFor, ActionFunctionCall, Actions, Function, Number, String_, VarType, Variable,
+  Action, ActionFor, ActionFunctionCall, Actions, DataType, Function, Number, String_, VarType,
+  Variable,
 };
 
 /// This contains compiler options, like the amound of threads to use or the target language
@@ -23,14 +24,10 @@ pub struct Compiler {
 }
 
 impl Compiler {
-  pub fn start(options: Options) -> Result<(), CodeError> {
+  pub fn start(options: Options) -> Result<(), LocationError> {
     let c = Self { options };
 
-    let mut file = File::open("./example.tp").unwrap();
-    let mut contents: Vec<u8> = vec![];
-    file.read_to_end(&mut contents).unwrap();
-
-    let res = Parser::parse(contents)?;
+    let res = Parser::parse(DataType::File("./example.tp"))?;
     println!("Debug output:");
     println!("{:#?}", res);
 

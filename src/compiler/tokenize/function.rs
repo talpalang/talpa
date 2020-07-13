@@ -54,7 +54,7 @@ pub struct ParseFunction<'a> {
 }
 
 impl<'a> ParseFunction<'a> {
-  fn change_state(&mut self, to: ParseFunctionState) -> Result<(), CodeError> {
+  fn change_state(&mut self, to: ParseFunctionState) -> Result<(), LocationError> {
     // Check if the current state has data and if so commit it to the response
     match &self.state {
       ParseFunctionState::Nothing(info) => {
@@ -78,7 +78,7 @@ impl<'a> ParseFunction<'a> {
     self.state = to;
     Ok(())
   }
-  pub fn start(p: &'a mut Parser) -> Result<Function, CodeError> {
+  pub fn start(p: &'a mut Parser) -> Result<Function, LocationError> {
     let mut s = Self {
       p,
       res: Function::empty(),
@@ -89,7 +89,7 @@ impl<'a> ParseFunction<'a> {
     s.parse()?;
     Ok(s.res)
   }
-  fn parse(&mut self) -> Result<(), CodeError> {
+  fn parse(&mut self) -> Result<(), LocationError> {
     while let Some(c) = self.p.next_char() {
       match &mut self.state {
         ParseFunctionState::Nothing(meta) => match c {

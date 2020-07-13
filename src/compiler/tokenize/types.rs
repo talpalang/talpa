@@ -90,7 +90,7 @@ impl MatchString for DetectType {
   }
 }
 
-pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, CodeError> {
+pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, LocationError> {
   if go_back_one {
     p.index -= 1;
   }
@@ -168,7 +168,7 @@ pub fn parse_struct<'a>(
   p: &'a mut Parser,
   inline: bool,
   back_one: bool,
-) -> Result<Struct, CodeError> {
+) -> Result<Struct, LocationError> {
   if back_one {
     p.index -= 1;
   }

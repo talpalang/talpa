@@ -54,7 +54,7 @@ pub struct ParseFunction<'a> {
 }
 
 impl<'a> ParseFunction<'a> {
-  fn change_state(&mut self, to: ParseFunctionState) -> Result<(), ParsingError> {
+  fn change_state(&mut self, to: ParseFunctionState) -> Result<(), CodeError> {
     // Check if the current state has data and if so commit it to the response
     match &self.state {
       ParseFunctionState::Nothing(info) => {
@@ -78,7 +78,7 @@ impl<'a> ParseFunction<'a> {
     self.state = to;
     Ok(())
   }
-  pub fn start(p: &'a mut Parser) -> Result<Function, ParsingError> {
+  pub fn start(p: &'a mut Parser) -> Result<Function, CodeError> {
     let mut s = Self {
       p,
       res: Function::empty(),
@@ -89,14 +89,14 @@ impl<'a> ParseFunction<'a> {
     s.parse()?;
     Ok(s.res)
   }
-  fn parse(&mut self) -> Result<(), ParsingError> {
+  fn parse(&mut self) -> Result<(), CodeError> {
     while let Some(c) = self.p.next_char() {
       match &mut self.state {
         ParseFunctionState::Nothing(meta) => match c {
           '\t' | '\n' | ' ' => {
             if let Some(_) = meta.function_name {
               // Not a valid name char return error
-              return self.p.error(ParsingErrorType::InvalidNameChar);
+              return self.p.error(TokenizeError::InvalidNameChar);
             }
           }
           '(' => {
@@ -113,7 +113,7 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // Not a valid name char return error
-            return self.p.error(ParsingErrorType::InvalidNameChar);
+            return self.p.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::Arg(meta) => match c {
@@ -125,15 +125,15 @@ impl<'a> ParseFunction<'a> {
           ')' => match meta.type_ {
             None if meta.name.len() > 0 => {
               // Argument not completed
-              return self.p.error(ParsingErrorType::IncompletedArgument);
+              return self.p.error(TokenizeError::IncompletedArgument);
             }
             _ => {
               // End of argument
               self.change_state(ParseFunctionState::Response)?;
             }
           }, // end of argument, start parsing response
+          // Parse the argument type
           _ if !meta.parsing_name => {
-            // Parse the argument type
             meta.type_ = Some(parse_type(self.p, true)?);
             self.change_state(ParseFunctionState::AfterArg)?;
           }
@@ -143,7 +143,7 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // Not a valid name char return error
-            return self.p.error(ParsingErrorType::InvalidNameChar);
+            return self.p.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::AfterArg => match c {
@@ -156,7 +156,7 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // This is not what we are searching for
-            return self.p.error(ParsingErrorType::InvalidNameChar);
+            return self.p.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::Response => match c {

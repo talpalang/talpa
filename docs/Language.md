@@ -14,5 +14,5 @@ To code language support for Talpa, you will need to know a few things.
 
 To implement the language support, you will need to complete 2 steps.
 
-1. Create and implement the structure in languages/*mylanguage*/mod.rs
-2. Add your language to the languages/mod.js file
+1. Create and implement the structure in compiler/target/*mylanguage*/mod.rs
+2. Add your language to the compiler/target/mod.js file

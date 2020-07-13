@@ -1,15 +1,17 @@
 use super::*;
+use core::fmt::Display;
+use files::CodeLocation;
 use std::error::Error;
 
-pub struct ParsingError {
+pub struct CodeError {
   pub location: CodeLocation,
-  pub error_type: ParsingErrorType,
+  pub error_type: StateError,
   pub prev_line: Option<String>,
   pub line: String,
   pub next_line: Option<String>,
 }
 
-impl ParsingError {
+impl CodeError {
   fn err(&self) -> String {
     let mut output: Vec<String> = vec![];
     let y = self.location.y;
@@ -38,22 +40,36 @@ impl ParsingError {
   }
 }
 
-impl Error for ParsingError {}
+impl Error for CodeError {}
 
-impl std::fmt::Debug for ParsingError {
+impl std::fmt::Debug for CodeError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(f, "{}", self.err())
   }
 }
 
-impl Display for ParsingError {
+impl Display for CodeError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(f, "{}", self.err())
   }
 }
 
+pub enum StateError {
+  Tokenize(TokenizeError),
+  Target(TargetError),
+}
+
+impl Display for StateError {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      Self::Tokenize(error) => write!(f, "{}", error),
+      Self::Target(error) => write!(f, "{}", error),
+    }
+  }
+}
+
 #[derive(Debug)]
-pub enum ParsingErrorType {
+pub enum TokenizeError {
   IncompletedArgument,
   UnexpectedEOF,
   UnexpectedChar(char),
@@ -62,7 +78,7 @@ pub enum ParsingErrorType {
   Custom(&'static str),
 }
 
-impl Display for ParsingErrorType {
+impl Display for TokenizeError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::IncompletedArgument => write!(f, "Incompletted argument"),
@@ -76,11 +92,11 @@ impl Display for ParsingErrorType {
 }
 
 #[derive(Debug)]
-pub enum LangErrorType {
+pub enum TargetError {
   UnsupportedLang,
 }
 
-impl Display for LangErrorType {
+impl Display for TargetError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::UnsupportedLang => write!(f, "Unsupported language"),

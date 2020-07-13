@@ -162,7 +162,7 @@ impl<'a> ParseAction<'a> {
     p: &'a mut Parser,
     go_back_one: bool,
     action_to_expect: ActionToExpect,
-  ) -> Result<Action, ParsingError> {
+  ) -> Result<Action, CodeError> {
     if go_back_one {
       p.index -= 1;
     }
@@ -175,10 +175,10 @@ impl<'a> ParseAction<'a> {
     if let Some(res) = s.res {
       Ok(res)
     } else {
-      s.p.error(ParsingErrorType::UnexpectedResult)
+      s.p.error(TokenizeError::UnexpectedResult)
     }
   }
-  fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), ParsingError> {
+  fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), CodeError> {
     self.res = Some(match state.into() {
       ParseActionState::Return(meta) => {
         let mut return_action: Option<Box<Action>> = None;
@@ -191,7 +191,7 @@ impl<'a> ParseAction<'a> {
         if let None = meta.action {
           return self
             .p
-            .error(ParsingErrorType::Custom("Missing variable assignment"));
+            .error(TokenizeError::Custom("Missing variable assignment"));
         }
 
         ActionAssigment {
@@ -215,7 +215,7 @@ impl<'a> ParseAction<'a> {
     Ok(())
   }
 
-  fn detect(&mut self) -> Result<(), ParsingError> {
+  fn detect(&mut self) -> Result<(), CodeError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
       self.p.try_match(vec![
         &Keywords::Const,
@@ -257,7 +257,7 @@ impl<'a> ParseAction<'a> {
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
         Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type => {
-          return self.p.error(ParsingErrorType::UnexpectedResult)
+          return self.p.error(TokenizeError::UnexpectedResult)
         }
       }
       return Ok(());
@@ -348,7 +348,7 @@ impl<'a> ParseAction<'a> {
     &mut self,
     name: String,
     check_for_function_open_sign: bool,
-  ) -> Result<ParseActionStateFunctionCall, ParsingError> {
+  ) -> Result<ParseActionStateFunctionCall, CodeError> {
     let mut res = ParseActionStateFunctionCall {
       name,
       arguments: vec![],
@@ -394,7 +394,7 @@ impl<'a> ParseAction<'a> {
     &mut self,
     name: String,
     check_for_equal_sign: bool,
-  ) -> Result<ParseActionStateAssigment, ParsingError> {
+  ) -> Result<ParseActionStateAssigment, CodeError> {
     let mut res = ParseActionStateAssigment { name, action: None };
 
     if check_for_equal_sign {
@@ -415,7 +415,7 @@ impl<'a> ParseAction<'a> {
 
     Ok(res)
   }
-  fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, ParsingError> {
+  fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, CodeError> {
     self.p.next_while(" \t\n");
 
     let mut for_item_name: Option<String> = None;
@@ -471,7 +471,7 @@ impl<'a> ParseAction<'a> {
       LoopType::Loop => ParseActionState::Loop(actions),
     })
   }
-  fn parse_return(&mut self) -> Result<ParseActionStateReturn, ParsingError> {
+  fn parse_return(&mut self) -> Result<ParseActionStateReturn, CodeError> {
     let mut res = ParseActionStateReturn { action: None };
 
     match self.p.next_while(" \t\n") {

@@ -23,7 +23,7 @@ impl Into<Action> for Variable {
 pub fn parse_var<'a>(
   p: &'a mut Parser,
   var_type_option: Option<VarType>,
-) -> Result<Variable, ParsingError> {
+) -> Result<Variable, CodeError> {
   let mut name = NameBuilder::new();
   let mut data_type: Option<Type> = None;
 

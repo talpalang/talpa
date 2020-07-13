@@ -22,7 +22,7 @@ pub struct ParseActions<'a> {
 }
 
 impl<'a> ParseActions<'a> {
-  pub fn start(p: &'a mut Parser) -> Result<Actions, ParsingError> {
+  pub fn start(p: &'a mut Parser) -> Result<Actions, CodeError> {
     let mut s = Self {
       p,
       res: Actions::empty(),
@@ -31,7 +31,7 @@ impl<'a> ParseActions<'a> {
     s.parse()?;
     Ok(s.res)
   }
-  fn parse(&mut self) -> Result<(), ParsingError> {
+  fn parse(&mut self) -> Result<(), CodeError> {
     while let Some(c) = self.p.next_char() {
       match self.state {
         ParseActionsState::Nothing => match c {

@@ -6,7 +6,7 @@ pub struct JavaScript {
 
 impl JavaScript {
   // Generate javascript code using tokens from parser
-  pub fn generate(parser: Parser) -> Result<Self, LangErrorType> {
+  pub fn generate(parser: Parser) -> Result<Self, TargetError> {
     let mut code = Self { src: String::new() };
     // define functions
     for func in parser.functions {
@@ -40,7 +40,7 @@ impl JavaScript {
   pub fn global(&mut self, var: Variable) -> String {
     let mut src = String::new();
     match var.var_type {
-      variable::VarType::Const => {
+      VarType::Const => {
         src += "const ";
       }
       _ => { /* Add error */ }
@@ -74,7 +74,7 @@ impl JavaScript {
     src += &action_code;
     return src;
   }
-  pub fn action_for(&mut self, action: action::ActionFor) -> String {
+  pub fn action_for(&mut self, action: ActionFor) -> String {
     let mut src = String::new();
     src += &format!(
       "for ({name} in {iter}) {{\n",
@@ -87,7 +87,7 @@ impl JavaScript {
     src += "}\n";
     return src;
   }
-  pub fn action_func_call(&mut self, action: action::ActionFunctionCall) -> String {
+  pub fn action_func_call(&mut self, action: ActionFunctionCall) -> String {
     let mut src = String::new();
     src += &action.name;
     src += "(";
@@ -99,7 +99,7 @@ impl JavaScript {
     src += ");\n";
     return src;
   }
-  pub fn action_loop(&mut self, action: actions::Actions) -> String {
+  pub fn action_loop(&mut self, action: Actions) -> String {
     let mut src = String::new();
     src += "while (true) {\n";
     for act in action.list {
@@ -115,24 +115,24 @@ impl JavaScript {
     src += ";\n";
     return src;
   }
-  pub fn action_num(&mut self, action: numbers::Number) -> String {
+  pub fn action_num(&mut self, action: Number) -> String {
     match action {
       Number::Float(res) => return res.to_string(),
       Number::Int(res) => return res.to_string(),
     }
   }
-  pub fn action_str(&mut self, action: strings::String_) -> String {
+  pub fn action_str(&mut self, action: String_) -> String {
     let mut src = String::new();
     src += "\"";
     src += &action.content;
     src += "\"";
     return src;
   }
-  pub fn action_var(&mut self, action: variable::Variable) -> String {
+  pub fn action_var(&mut self, action: Variable) -> String {
     let mut src = String::new();
     match action.var_type {
-      variable::VarType::Const => src += "const ",
-      variable::VarType::Let => src += "let ",
+      VarType::Const => src += "const ",
+      VarType::Let => src += "let ",
     }
     src += &action.name;
     src += " = ";

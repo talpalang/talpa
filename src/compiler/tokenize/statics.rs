@@ -29,14 +29,14 @@ impl NameBuilder {
     let parser = NumberParser::new_without_starting(p, self.0.clone());
     Some(parser)
   }
-  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, ParsingError> {
+  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, CodeError> {
     if self.len() == 0 {
       return Ok(String::new());
     }
     if let Some(c) = self.0.get(0) {
       match *c as char {
         '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {
-          return p.error(ParsingErrorType::Custom("name cannot start with a number"))
+          return p.error(TokenizeError::Custom("name cannot start with a number"))
         }
         _ => {}
       }
@@ -44,7 +44,7 @@ impl NameBuilder {
 
     match String::from_utf8(self.0.clone()) {
       Ok(parsed_string) => Ok(parsed_string),
-      Err(_) => p.error(ParsingErrorType::Custom("Invalid utf8 string")),
+      Err(_) => p.error(TokenizeError::Custom("Invalid utf8 string")),
     }
   }
   pub fn len(&self) -> usize {

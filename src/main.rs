@@ -1,30 +1,13 @@
-mod lib;
+mod compiler;
 
-use lib::languages::{generate, Lang};
-use lib::Parser;
-use std::fs::File;
-use std::io::prelude::*;
+use compiler::{Compiler, Lang, Options};
 
 fn main() {
-    let mut file = File::open("./src/example.tp").unwrap();
-    let mut contents = vec![];
-    file.read_to_end(&mut contents).unwrap();
-    let parser = Parser::parse(contents);
-    let res = match parser {
-        Err(err) => {
-            println!("{}", err);
-            return;
-        }
-        Ok(res) => res,
-    };
-    println!("{:#?}", res);
-    let code = generate(res, Lang::JS);
-    let src = match code {
+    match Compiler::start(Options { lang: Lang::JS }) {
         Err(err) => {
             println!("{:?}", err);
-            "".to_string()
+            std::process::exit(1);
         }
-        Ok(res) => res,
+        Ok(_) => {}
     };
-    println!("{}", src);
 }

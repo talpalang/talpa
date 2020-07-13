@@ -29,20 +29,20 @@ impl fmt::Debug for Parser {
 }
 
 impl Parser {
-  pub fn error<T>(&self, error_type: ParsingErrorType) -> Result<T, ParsingError> {
+  pub fn error<T>(&self, error_type: TokenizeError) -> Result<T, CodeError> {
     self.custom_error(error_type, None)
   }
-  pub fn unexpected_char<T>(&self, c: char) -> Result<T, ParsingError> {
-    self.error(ParsingErrorType::UnexpectedChar(c))
+  pub fn unexpected_char<T>(&self, c: char) -> Result<T, CodeError> {
+    self.error(TokenizeError::UnexpectedChar(c))
   }
-  pub fn unexpected_eof<T>(&self) -> Result<T, ParsingError> {
-    self.error(ParsingErrorType::UnexpectedEOF)
+  pub fn unexpected_eof<T>(&self) -> Result<T, CodeError> {
+    self.error(TokenizeError::UnexpectedEOF)
   }
   pub fn custom_error<T>(
     &self,
-    error_type: ParsingErrorType,
+    error_type: TokenizeError,
     file_char_number: Option<usize>,
-  ) -> Result<T, ParsingError> {
+  ) -> Result<T, CodeError> {
     let use_index = if let Some(index) = file_char_number {
       index
     } else {
@@ -105,20 +105,20 @@ impl Parser {
       None
     };
 
-    let res = ParsingError {
+    let res = CodeError {
       location: CodeLocation {
         file_name: None,
         y: line_number,
         x: current_line_position,
       },
-      error_type,
+      error_type: StateError::Tokenize(error_type),
       prev_line,
       line: String::from_utf8(current_line).unwrap(),
       next_line: next_line,
     };
     Err(res)
   }
-  pub fn parse(contents: impl Into<Vec<u8>>) -> Result<Self, ParsingError> {
+  pub fn parse(contents: impl Into<Vec<u8>>) -> Result<Self, CodeError> {
     // this removes \r as it seems to cause problems during parsing
     let mut tokens = contents.into();
     for i in 0..tokens.len() {
@@ -256,7 +256,7 @@ impl Parser {
     self.index -= char_count + 1;
     None
   }
-  fn parse_nothing(&mut self) -> Result<(), ParsingError> {
+  fn parse_nothing(&mut self) -> Result<(), CodeError> {
     if let None = self.next_while(" \n\t") {
       return Ok(());
     }
@@ -289,7 +289,7 @@ impl Parser {
     Ok(())
   }
 
-  pub fn expect(&mut self, text: &str) -> Result<(), ParsingError> {
+  pub fn expect(&mut self, text: &str) -> Result<(), CodeError> {
     for letter in text.chars() {
       match self.next_char() {
         Some(v) if v == letter => {}
@@ -337,11 +337,4 @@ impl Parser {
   //     }
   //     self.error(ParsingErrorType::UnexpectedEOF)
   // }
-}
-
-#[derive(Debug)]
-pub struct CodeLocation {
-  pub file_name: Option<String>,
-  pub x: usize,
-  pub y: usize,
 }

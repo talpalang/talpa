@@ -14,7 +14,6 @@ pub enum Action {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
-  NOOP,
 }
 
 #[derive(Debug)]
@@ -416,13 +415,19 @@ impl<'a> ParseAction<'a> {
     Ok(res)
   }
   fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, CodeError> {
-    self.p.next_while(" \t\n");
+    if let None = self.p.next_while(" \t\n") {
+      return self.p.unexpected_eof();
+    };
 
     let mut for_item_name: Option<String> = None;
 
     // Parse the bit between the "for"/"while" and "{"
     let loop_based_on = match loop_type {
-      LoopType::While => ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?,
+      LoopType::While => Some(ParseAction::start(
+        self.p,
+        true,
+        ActionToExpect::Assignment("{"),
+      )?),
       LoopType::For => {
         let mut name = NameBuilder::new();
         loop {
@@ -442,11 +447,15 @@ impl<'a> ParseAction<'a> {
           return self.p.unexpected_eof();
         }
 
-        ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?
+        Some(ParseAction::start(
+          self.p,
+          true,
+          ActionToExpect::Assignment("{"),
+        )?)
       }
       LoopType::Loop => {
         self.p.index -= 1;
-        Action::NOOP
+        None
       }
     };
 
@@ -461,12 +470,12 @@ impl<'a> ParseAction<'a> {
     Ok(match loop_type {
       LoopType::For => ParseActionState::For(ActionFor {
         actions,
-        list: Box::new(loop_based_on),
+        list: Box::new(loop_based_on.unwrap()),
         item_name: for_item_name.unwrap_or(String::new()),
       }),
       LoopType::While => ParseActionState::While(ActionWhile {
         actions,
-        true_value: Box::new(loop_based_on),
+        true_value: Box::new(loop_based_on.unwrap()),
       }),
       LoopType::Loop => ParseActionState::Loop(actions),
     })

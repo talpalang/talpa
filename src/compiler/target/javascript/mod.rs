@@ -68,7 +68,6 @@ impl JavaScript {
       Action::VarRef(res) => res,
       // add remaining actions
       Action::Assigment(_res) => "/* Assignment is unimplemented */".to_string(),
-      Action::NOOP => "/* NOOP is unimplemented */".to_string(),
       Action::While(_res) => "/* While is unimplemented */".to_string(),
     };
     src += &action_code;

@@ -14,7 +14,6 @@ pub enum Action {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
-  NOOP,
 }
 
 #[derive(Debug)]
@@ -162,7 +161,7 @@ impl<'a> ParseAction<'a> {
     p: &'a mut Parser,
     go_back_one: bool,
     action_to_expect: ActionToExpect,
-  ) -> Result<Action, ParsingError> {
+  ) -> Result<Action, LocationError> {
     if go_back_one {
       p.index -= 1;
     }
@@ -175,10 +174,10 @@ impl<'a> ParseAction<'a> {
     if let Some(res) = s.res {
       Ok(res)
     } else {
-      s.p.error(ParsingErrorType::UnexpectedResult)
+      s.p.error(TokenizeError::UnexpectedResult)
     }
   }
-  fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), ParsingError> {
+  fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), LocationError> {
     self.res = Some(match state.into() {
       ParseActionState::Return(meta) => {
         let mut return_action: Option<Box<Action>> = None;
@@ -191,7 +190,7 @@ impl<'a> ParseAction<'a> {
         if let None = meta.action {
           return self
             .p
-            .error(ParsingErrorType::Custom("Missing variable assignment"));
+            .error(TokenizeError::Custom("Missing variable assignment"));
         }
 
         ActionAssigment {
@@ -215,7 +214,7 @@ impl<'a> ParseAction<'a> {
     Ok(())
   }
 
-  fn detect(&mut self) -> Result<(), ParsingError> {
+  fn detect(&mut self) -> Result<(), LocationError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
       self.p.try_match(vec![
         &Keywords::Const,
@@ -257,7 +256,7 @@ impl<'a> ParseAction<'a> {
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
         Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type => {
-          return self.p.error(ParsingErrorType::UnexpectedResult)
+          return self.p.error(TokenizeError::UnexpectedResult)
         }
       }
       return Ok(());
@@ -348,7 +347,7 @@ impl<'a> ParseAction<'a> {
     &mut self,
     name: String,
     check_for_function_open_sign: bool,
-  ) -> Result<ParseActionStateFunctionCall, ParsingError> {
+  ) -> Result<ParseActionStateFunctionCall, LocationError> {
     let mut res = ParseActionStateFunctionCall {
       name,
       arguments: vec![],
@@ -394,7 +393,7 @@ impl<'a> ParseAction<'a> {
     &mut self,
     name: String,
     check_for_equal_sign: bool,
-  ) -> Result<ParseActionStateAssigment, ParsingError> {
+  ) -> Result<ParseActionStateAssigment, LocationError> {
     let mut res = ParseActionStateAssigment { name, action: None };
 
     if check_for_equal_sign {
@@ -415,14 +414,20 @@ impl<'a> ParseAction<'a> {
 
     Ok(res)
   }
-  fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, ParsingError> {
-    self.p.next_while(" \t\n");
+  fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, LocationError> {
+    if let None = self.p.next_while(" \t\n") {
+      return self.p.unexpected_eof();
+    };
 
     let mut for_item_name: Option<String> = None;
 
     // Parse the bit between the "for"/"while" and "{"
     let loop_based_on = match loop_type {
-      LoopType::While => ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?,
+      LoopType::While => Some(ParseAction::start(
+        self.p,
+        true,
+        ActionToExpect::Assignment("{"),
+      )?),
       LoopType::For => {
         let mut name = NameBuilder::new();
         loop {
@@ -442,11 +447,15 @@ impl<'a> ParseAction<'a> {
           return self.p.unexpected_eof();
         }
 
-        ParseAction::start(self.p, true, ActionToExpect::Assignment("{"))?
+        Some(ParseAction::start(
+          self.p,
+          true,
+          ActionToExpect::Assignment("{"),
+        )?)
       }
       LoopType::Loop => {
         self.p.index -= 1;
-        Action::NOOP
+        None
       }
     };
 
@@ -461,17 +470,17 @@ impl<'a> ParseAction<'a> {
     Ok(match loop_type {
       LoopType::For => ParseActionState::For(ActionFor {
         actions,
-        list: Box::new(loop_based_on),
+        list: Box::new(loop_based_on.unwrap()),
         item_name: for_item_name.unwrap_or(String::new()),
       }),
       LoopType::While => ParseActionState::While(ActionWhile {
         actions,
-        true_value: Box::new(loop_based_on),
+        true_value: Box::new(loop_based_on.unwrap()),
       }),
       LoopType::Loop => ParseActionState::Loop(actions),
     })
   }
-  fn parse_return(&mut self) -> Result<ParseActionStateReturn, ParsingError> {
+  fn parse_return(&mut self) -> Result<ParseActionStateReturn, LocationError> {
     let mut res = ParseActionStateReturn { action: None };
 
     match self.p.next_while(" \t\n") {

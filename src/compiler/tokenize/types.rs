@@ -90,7 +90,7 @@ impl MatchString for DetectType {
   }
 }
 
-pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, ParsingError> {
+pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, LocationError> {
   if go_back_one {
     p.index -= 1;
   }
@@ -168,7 +168,7 @@ pub fn parse_struct<'a>(
   p: &'a mut Parser,
   inline: bool,
   back_one: bool,
-) -> Result<Struct, ParsingError> {
+) -> Result<Struct, LocationError> {
   if back_one {
     p.index -= 1;
   }
@@ -183,7 +183,7 @@ pub fn parse_struct<'a>(
     let first_name_char = match p.next_while(" \t\n") {
       None => return p.unexpected_eof(),
       Some('{') => {
-        return p.error(ParsingErrorType::Custom(
+        return p.error(TokenizeError::Custom(
           "Struct requires name for example: \"struct foo {}\"",
         ))
       }

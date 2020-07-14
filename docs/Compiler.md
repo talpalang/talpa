@@ -7,7 +7,12 @@ Underhere the 3 stages are described.
 
 ## Stage 1 *Prasing the code*
 
-Here we parse the user written code into data so we can more esially anylize the data and later transform it into new code
+Here we parse the user written code into data so we can more esially anylize the data and later transform it into new code.
+
+Code Location:
+```
+compiler/tokenize
+```
 
 ## Stage 2 *Checking*
 
@@ -19,7 +24,17 @@ For exaple:
 - Variable assigment it's variable exsists and is not a constant.
 - If a type referes to another type check it.
 
+Code Location:
+```
+compiler/anylize
+```
+
 ## Stage 3 *Create new code*
 
 Here we create new code for the language the user spesified.
 This code uses the anylized code from stage 2 to build new code.
+
+Code Location:
+```
+compiler/target
+```

@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Action {
   Variable(Variable),
   Return(Option<Box<Action>>),
@@ -16,7 +16,7 @@ pub enum Action {
   Loop(Actions),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ActionAssigment {
   pub name: String,
   pub action: Box<Action>,
@@ -28,7 +28,7 @@ impl Into<Action> for ActionAssigment {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ActionFunctionCall {
   pub name: String,
   pub arguments: Vec<Action>,
@@ -131,7 +131,7 @@ impl Into<LoopType> for Keywords {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ActionWhile {
   actions: Actions,
   true_value: Box<Action>,
@@ -143,7 +143,7 @@ impl Into<Action> for ActionWhile {
   }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ActionFor {
   pub actions: Actions,
   pub list: Box<Action>,

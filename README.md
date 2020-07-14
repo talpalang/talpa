@@ -19,13 +19,13 @@ This roadmap is used to track the progress on the project. If you add a feature 
       * [ ]  Types
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
         * [x]  Extending types parsing  or `[]string`
-        * [ ]  Inline types
+        * [x]  Inline types
           * [x] structs `struct{}`
           * [x] arrays `[]string`
-          * [ ] enums `enum{}`
+          * [x] enums `enum{}`
         * [ ] global types
           * [x] structs `struct foo {}`
-          * [ ] enums `enum foo {}`
+          * [x] enums `enum foo {}`
           * [ ] custom types `type foo = []bar`
       * [x]  Actions
         * [x]  Variables

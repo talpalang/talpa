@@ -33,7 +33,7 @@ fn test_enum_with_simple_field() {
   parse_str(
     r#"
       enum foo {
-        bar,
+        bar
       }
     "#,
   );
@@ -44,8 +44,8 @@ fn test_enum_with_multiple_simple_fields() {
   parse_str(
     r#"
       enum foo {
-        bar,
-        baz,
+        bar
+        baz
       }
     "#,
   );
@@ -56,7 +56,7 @@ fn test_enum_with_field() {
   parse_str(
     r#"
       enum foo {
-        bar = 1,
+        bar = 1
       }
     "#,
   );
@@ -67,8 +67,8 @@ fn test_enum_with_multiple_fields() {
   parse_str(
     r#"
       enum foo {
-        bar = "bar",
-        baz = "baz",
+        bar = "bar"
+        baz = "baz"
       }
     "#,
   );

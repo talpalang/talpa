@@ -242,6 +242,10 @@ pub fn parse_enum<'a>(
       match c {
         _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
+        '\n' => {
+          p.index -= 1;
+          break;
+        }
         _ => return p.unexpected_char(c),
       }
     }
@@ -254,13 +258,22 @@ pub fn parse_enum<'a>(
     match p.next_while(" \t") {
       Some('=') => {
         let action = ParseAction::start(p, false, ActionToExpect::Assignment(","))?;
+        match p.next_while(" \t") {
+          Some('}') => {
+            res.fields.push(to_add);
+            break;
+          }
+          Some('\n') => {}
+          Some(c) => return p.unexpected_char(c),
+          None => return p.unexpected_eof(),
+        }
         to_add.value = Some(action);
       }
       Some('}') => {
         res.fields.push(to_add);
         break;
       }
-      Some(',') => {}
+      Some('\n') => {}
       Some(c) => return p.unexpected_char(c),
       None => return p.unexpected_eof(),
     };

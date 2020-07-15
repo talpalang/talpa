@@ -9,6 +9,7 @@ pub struct Parser {
   pub functions: Vec<Function>,
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
+  pub enums: Vec<Enum>,
 }
 
 #[derive(Debug)]
@@ -16,6 +17,7 @@ pub struct SimpleParserOutput<'a> {
   pub functions: &'a Vec<Function>,
   pub vars: &'a Vec<Variable>,
   pub structs: &'a Vec<Struct>,
+  pub enums: &'a Vec<Enum>,
 }
 
 impl fmt::Debug for Parser {
@@ -24,6 +26,7 @@ impl fmt::Debug for Parser {
       functions: &self.functions,
       vars: &self.vars,
       structs: &self.structs,
+      enums: &self.enums,
     };
     writeln!(f, "{:#?}", simple_parser)
   }
@@ -49,6 +52,7 @@ impl Parser {
       functions: vec![],
       vars: vec![],
       structs: vec![],
+      enums: vec![],
       file_name: None,
     };
 
@@ -336,7 +340,12 @@ impl Parser {
     self.index -= 1;
     while let Some(_) = self.next_while(" \n\t") {
       self.index -= 1;
-      match self.try_match(vec![&Keywords::Fn, &Keywords::Const, &Keywords::Struct]) {
+      match self.try_match(vec![
+        &Keywords::Fn,
+        &Keywords::Const,
+        &Keywords::Struct,
+        &Keywords::Enum,
+      ]) {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;
           self.vars.push(parsed_variable);
@@ -348,6 +357,10 @@ impl Parser {
         Some(Keywords::Struct) => {
           let parsed_struct = parse_struct(self, false, false)?;
           self.structs.push(parsed_struct);
+        }
+        Some(Keywords::Enum) => {
+          let parsed_enum = parse_enum(self, false, false)?;
+          self.enums.push(parsed_enum);
         }
         _ => {
           // could be newline/tab/whitespace

@@ -26,6 +26,7 @@ pub enum Type {
   String,
   Char,
   Struct(Struct),
+  Enum(Enum),
   Array(Box<Type>),
 
   /// This references to another type
@@ -46,6 +47,7 @@ pub enum DetectType {
   String,
   Char,
   Struct,
+  Enum,
   Array,
 }
 
@@ -64,7 +66,7 @@ impl DetectType {
       Self::U64 => Type::U64,
       Self::String => Type::String,
       Self::Char => Type::Char,
-      Self::Array | Self::Struct => return None,
+      Self::Array | Self::Struct | Self::Enum => return None,
     })
   }
 }
@@ -86,6 +88,7 @@ impl MatchString for DetectType {
       Self::Char => "char",
       Self::Array => "[]",
       Self::Struct => "struct",
+      Self::Enum => "enum",
     }
   }
 }
@@ -114,6 +117,7 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
     &DetectType::String,
     &DetectType::Char,
     &DetectType::Struct,
+    &DetectType::Enum,
     &DetectType::Array,
   ]) {
     Some(&DetectType::Array) => {
@@ -126,6 +130,11 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
           if c == '{' || c == ' ' || c == '\n' {
             let res = parse_struct(p, true, c == '{')?;
             return Ok(Type::Struct(res));
+          }
+        } else if let &DetectType::Enum = matched_type {
+          if c == '{' || c == ' ' || c == '\n' {
+            let res = parse_enum(p, true, c == '{')?;
+            return Ok(Type::Enum(res));
           }
         } else if !valid_name_char(c) {
           if let Some(v) = matched_type.to_type() {
@@ -157,28 +166,39 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
 }
 
 #[derive(Debug, Clone)]
-pub struct Struct {
-  /// The struct name if it's a named struct, inline structs don't have names
+pub struct Enum {
   name: Option<String>,
-  /// The struct fields
-  fields: HashMap<String, Type>,
+  fields: Vec<EnumField>,
 }
 
-pub fn parse_struct<'a>(
+#[derive(Debug, Clone)]
+pub struct EnumField {
+  name: String,
+  value: Option<Action>,
+}
+
+pub fn parse_enum<'a>(
   p: &'a mut Parser,
   inline: bool,
   back_one: bool,
-) -> Result<Struct, LocationError> {
+) -> Result<Enum, LocationError> {
   if back_one {
     p.index -= 1;
   }
 
-  let mut res = Struct {
+  let mut res = Enum {
     name: None,
-    fields: HashMap::new(),
+    fields: vec![],
   };
 
-  if !inline {
+  if inline {
+    // Find the struct opening
+    match p.next_while(" \t") {
+      Some('{') => {}
+      Some(c) => return p.unexpected_char(c),
+      None => return p.unexpected_eof(),
+    }
+  } else {
     // Parse the struct name
     let first_name_char = match p.next_while(" \t\n") {
       None => return p.unexpected_eof(),
@@ -206,13 +226,121 @@ pub fn parse_struct<'a>(
     }
 
     res.name = Some(struct_name.to_string(p)?);
-  } else {
+  }
+
+  // Parse the enum fields
+  loop {
+    // Parse field name
+    let first_name_char = match p.next_while(" \t\n") {
+      None => return p.unexpected_eof(),
+      Some('}') => break, // end of enum
+      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) => c,
+    };
+    let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
+    while let Some(c) = p.next_char() {
+      match c {
+        _ if valid_name_char(c) => field_name_builder.push(c),
+        ' ' | '\t' => break,
+        '\n' => {
+          p.index -= 1;
+          break;
+        }
+        _ => return p.unexpected_char(c),
+      }
+    }
+    let mut to_add = EnumField {
+      name: field_name_builder.to_string(p)?,
+      value: None,
+    };
+
+    // Parse the = symbol
+    match p.next_while(" \t") {
+      Some('=') => {
+        let action = ParseAction::start(p, false, ActionToExpect::Assignment(","))?;
+        match p.next_while(" \t") {
+          Some('}') => {
+            res.fields.push(to_add);
+            break;
+          }
+          Some('\n') => {}
+          Some(c) => return p.unexpected_char(c),
+          None => return p.unexpected_eof(),
+        }
+        to_add.value = Some(action);
+      }
+      Some('}') => {
+        res.fields.push(to_add);
+        break;
+      }
+      Some('\n') => {}
+      Some(c) => return p.unexpected_char(c),
+      None => return p.unexpected_eof(),
+    };
+
+    res.fields.push(to_add);
+  }
+
+  Ok(res)
+}
+
+#[derive(Debug, Clone)]
+pub struct Struct {
+  /// The struct name if it's a named struct, inline structs don't have names
+  name: Option<String>,
+  /// The struct fields
+  fields: HashMap<String, Type>,
+}
+
+pub fn parse_struct<'a>(
+  p: &'a mut Parser,
+  inline: bool,
+  back_one: bool,
+) -> Result<Struct, LocationError> {
+  if back_one {
+    p.index -= 1;
+  }
+
+  let mut res = Struct {
+    name: None,
+    fields: HashMap::new(),
+  };
+
+  if inline {
     // Find the struct opening
     match p.next_while(" \t") {
       Some('{') => {}
       Some(c) => return p.unexpected_char(c),
       None => return p.unexpected_eof(),
     }
+  } else {
+    // Parse the struct name
+    let first_name_char = match p.next_while(" \t\n") {
+      None => return p.unexpected_eof(),
+      Some('{') => {
+        return p.error(TokenizeError::Custom(
+          "Struct requires name for example: \"struct foo {}\"",
+        ))
+      }
+      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) => c,
+    };
+    let mut struct_name = NameBuilder::new_with_char(first_name_char);
+    while let Some(c) = p.next_char() {
+      match c {
+        ' ' | '\t' | '\n' => {
+          if let Some('{') = p.next_while(" \t") {
+            break;
+          }
+          return p.unexpected_char(c);
+        }
+        '{' => break,
+        _ if valid_name_char(c) => struct_name.push(c),
+        _ => return p.unexpected_char(c),
+      }
+    }
+
+    res.name = Some(struct_name.to_string(p)?);
   }
 
   // Parse struct fields

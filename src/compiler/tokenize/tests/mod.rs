@@ -1,4 +1,5 @@
 mod comments;
+mod enums;
 mod functions;
 mod general;
 mod loops;

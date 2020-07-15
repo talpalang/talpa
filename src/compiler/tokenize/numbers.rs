@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Number {
   /// This matches the default int number type of the programming language,
   /// Note that the size of this value might differ over multiple languages

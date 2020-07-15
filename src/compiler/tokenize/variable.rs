@@ -1,12 +1,12 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VarType {
   Let,
   Const,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variable {
   pub var_type: VarType,
   pub data_type: Option<Type>,

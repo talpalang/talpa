@@ -16,17 +16,17 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Function keyword and body detection `fn FunctionName() {}`
         * [x]  Function arguments `fn foo(bar string) {}`
         * [x]  Function response `fn foo() string {}`
-      * [ ]  Types
+      * [x]  Types
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
         * [x]  Extending types parsing  or `[]string`
         * [x]  Inline types
           * [x] structs `struct{}`
           * [x] arrays `[]string`
           * [x] enums `enum{}`
-        * [ ] global types
+        * [x] global types
           * [x] structs `struct foo {}`
           * [x] enums `enum foo {}`
-          * [ ] custom types `type foo = []bar`
+          * [x] custom types `type foo = []bar`
       * [x]  Actions
         * [x]  Variables
           * [x]  Keyword and name `let a`, `const a`

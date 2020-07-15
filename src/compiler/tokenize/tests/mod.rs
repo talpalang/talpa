@@ -2,6 +2,7 @@ mod comments;
 mod enums;
 mod functions;
 mod general;
+mod global_types;
 mod loops;
 mod structs;
 mod variables;

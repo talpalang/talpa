@@ -10,6 +10,7 @@ pub struct Parser {
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
   pub enums: Vec<Enum>,
+  pub types: Vec<GlobalType>,
 }
 
 #[derive(Debug)]
@@ -18,6 +19,7 @@ pub struct SimpleParserOutput<'a> {
   pub vars: &'a Vec<Variable>,
   pub structs: &'a Vec<Struct>,
   pub enums: &'a Vec<Enum>,
+  pub types: &'a Vec<GlobalType>,
 }
 
 impl fmt::Debug for Parser {
@@ -27,6 +29,7 @@ impl fmt::Debug for Parser {
       vars: &self.vars,
       structs: &self.structs,
       enums: &self.enums,
+      types: &self.types,
     };
     writeln!(f, "{:#?}", simple_parser)
   }
@@ -53,6 +56,7 @@ impl Parser {
       vars: vec![],
       structs: vec![],
       enums: vec![],
+      types: vec![],
       file_name: None,
     };
 
@@ -345,6 +349,7 @@ impl Parser {
         &Keywords::Const,
         &Keywords::Struct,
         &Keywords::Enum,
+        &Keywords::Type,
       ]) {
         Some(Keywords::Const) => {
           let parsed_variable = parse_var(self, Some(VarType::Const))?;
@@ -361,6 +366,10 @@ impl Parser {
         Some(Keywords::Enum) => {
           let parsed_enum = parse_enum(self, false, false)?;
           self.enums.push(parsed_enum);
+        }
+        Some(Keywords::Type) => {
+          let parsed_type = parse_global_type(self)?;
+          self.types.push(parsed_type);
         }
         _ => {
           // could be newline/tab/whitespace

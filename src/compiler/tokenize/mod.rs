@@ -22,7 +22,9 @@ pub use statics::{valid_name_char, Keywords, NameBuilder};
 pub use std::collections::HashMap;
 pub use std::fmt::Display;
 pub use strings::{parse_static_str, String_};
-pub use types::{parse_enum, parse_struct, parse_type, Enum, Struct, Type};
+pub use types::{
+  parse_enum, parse_global_type, parse_struct, parse_type, Enum, GlobalType, Struct, Type,
+};
 pub use utils::MatchString;
 pub use variable::{parse_var, VarType, Variable};
 

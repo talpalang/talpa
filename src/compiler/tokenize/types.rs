@@ -166,6 +166,45 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
 }
 
 #[derive(Debug, Clone)]
+pub struct GlobalType {
+  name: String,
+  type_: Type,
+}
+
+pub fn parse_global_type<'a>(p: &'a mut Parser) -> Result<GlobalType, LocationError> {
+  // Parse the global type name
+  let first_name_char = match p.next_while(" \t\n") {
+    None => return p.unexpected_eof(),
+    Some('{') => {
+      return p.error(TokenizeError::Custom(
+        "Struct requires name for example: \"struct foo {}\"",
+      ))
+    }
+    Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+    Some(c) => c,
+  };
+  let mut struct_name = NameBuilder::new_with_char(first_name_char);
+  while let Some(c) = p.next_char() {
+    match c {
+      ' ' | '\t' | '\n' => {
+        if let Some('=') = p.next_while(" \t") {
+          break;
+        }
+        return p.unexpected_char(c);
+      }
+      '=' => break,
+      _ if valid_name_char(c) => struct_name.push(c),
+      _ => return p.unexpected_char(c),
+    }
+  }
+
+  let name = struct_name.to_string(p)?;
+  let type_ = parse_type(p, false)?;
+
+  Ok(GlobalType { name, type_ })
+}
+
+#[derive(Debug, Clone)]
 pub struct Enum {
   name: Option<String>,
   fields: Vec<EnumField>,
@@ -192,14 +231,14 @@ pub fn parse_enum<'a>(
   };
 
   if inline {
-    // Find the struct opening
+    // Find the enum opening
     match p.next_while(" \t") {
       Some('{') => {}
       Some(c) => return p.unexpected_char(c),
       None => return p.unexpected_eof(),
     }
   } else {
-    // Parse the struct name
+    // Parse the enum name
     let first_name_char = match p.next_while(" \t\n") {
       None => return p.unexpected_eof(),
       Some('{') => {

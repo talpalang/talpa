@@ -24,7 +24,11 @@ impl Compiler {
     let c = Self { options };
 
     let res = Tokenizer::tokenize(DataType::File("./example.tp"))?;
-    let (formatted_res, anilize_res) = anilize_tokens(res);
+    let (formatted_res, anilize_res) = anilize_tokens(&res);
+
+    // We don't need the res data anymore from here on wasted memory.
+    drop(res);
+
     for error in anilize_res.errors {
       return Err(LocationError::new_simple(error));
     }

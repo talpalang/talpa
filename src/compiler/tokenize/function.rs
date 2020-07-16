@@ -4,7 +4,7 @@ use errors::{LocationError, TokenizeError};
 use statics::{valid_name_char, NameBuilder};
 use types::parse_type;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Function {
   pub name: Option<String>,
   pub args: Vec<(String, Type)>,

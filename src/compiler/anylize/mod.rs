@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::fmt;
 use tokenize::{Enum, Function, GlobalType, Struct, Variable};
 
+#[cfg(test)]
+mod tests;
+
 trait AddToAnylizeResults {
   fn add(self, add_to: &mut AnylizeResults);
 }
@@ -94,24 +97,24 @@ impl fmt::Debug for AnilizedTokens {
   }
 }
 
-pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) {
+pub fn anilize_tokens(tokenizer: &Tokenizer) -> (AnilizedTokens, AnylizeResults) {
   let mut anilized_res = AnylizeResults::new();
 
   let file_name = tokenizer.get_file_name();
 
-  let (functions, mut functions_res) = array_into_hash_map(tokenizer.functions);
+  let (functions, mut functions_res) = array_into_hash_map(tokenizer.functions.clone());
   anilized_res.merge(&mut functions_res);
 
-  let (vars, mut vars_res) = array_into_hash_map(tokenizer.vars);
+  let (vars, mut vars_res) = array_into_hash_map(tokenizer.vars.clone());
   anilized_res.merge(&mut vars_res);
 
-  let (structs, mut structs_res) = array_into_hash_map(tokenizer.structs);
+  let (structs, mut structs_res) = array_into_hash_map(tokenizer.structs.clone());
   anilized_res.merge(&mut structs_res);
 
-  let (enums, mut enums_res) = array_into_hash_map(tokenizer.enums);
+  let (enums, mut enums_res) = array_into_hash_map(tokenizer.enums.clone());
   anilized_res.merge(&mut enums_res);
 
-  let (types, mut types_res) = array_into_hash_map(tokenizer.types);
+  let (types, mut types_res) = array_into_hash_map(tokenizer.types.clone());
   anilized_res.merge(&mut types_res);
 
   let res = AnilizedTokens {

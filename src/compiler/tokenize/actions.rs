@@ -1,4 +1,7 @@
 use super::*;
+use action::{ActionToExpect, ParseAction};
+use errors::LocationError;
+use statics::valid_name_char;
 
 #[derive(Debug, Clone)]
 pub struct Actions {
@@ -16,15 +19,15 @@ enum ParseActionsState {
 }
 
 pub struct ParseActions<'a> {
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   res: Actions,
   state: ParseActionsState,
 }
 
 impl<'a> ParseActions<'a> {
-  pub fn start(p: &'a mut Parser) -> Result<Actions, LocationError> {
+  pub fn start(t: &'a mut Tokenizer) -> Result<Actions, LocationError> {
     let mut s = Self {
-      p,
+      t,
       res: Actions::empty(),
       state: ParseActionsState::Nothing,
     };
@@ -32,7 +35,7 @@ impl<'a> ParseActions<'a> {
     Ok(s.res)
   }
   fn parse(&mut self) -> Result<(), LocationError> {
-    while let Some(c) = self.p.next_char() {
+    while let Some(c) = self.t.next_char() {
       match self.state {
         ParseActionsState::Nothing => match c {
           '\t' | '\n' | ' ' => {
@@ -40,15 +43,15 @@ impl<'a> ParseActions<'a> {
           }
           '}' => return Ok(()),
           _ if valid_name_char(c) => {
-            let action = ParseAction::start(self.p, true, ActionToExpect::ActionInBody)?;
+            let action = ParseAction::start(self.t, true, ActionToExpect::ActionInBody)?;
             self.res.list.push(action);
 
-            if let None = self.p.next_while("\n\t ") {
-              return self.p.unexpected_eof();
+            if let None = self.t.next_while("\n\t ") {
+              return self.t.unexpected_eof();
             }
-            self.p.index -= 1;
+            self.t.index -= 1;
           }
-          c => return self.p.unexpected_char(c),
+          c => return self.t.unexpected_char(c),
         },
       }
     }

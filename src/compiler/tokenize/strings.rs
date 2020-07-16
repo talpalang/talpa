@@ -1,4 +1,5 @@
 use super::*;
+use errors::LocationError;
 
 #[derive(Debug, Clone)]
 pub struct String_ {
@@ -11,14 +12,14 @@ impl Into<Action> for String_ {
   }
 }
 
-pub fn parse_static_str<'a>(p: &'a mut Parser) -> Result<String_, LocationError> {
+pub fn parse_static_str<'a>(t: &'a mut Tokenizer) -> Result<String_, LocationError> {
   let mut res = String_ {
     content: String::new(),
   };
   let mut string_content: Vec<u8> = vec![];
 
   let mut escaped = false;
-  while let Some(c) = p.next_char() {
+  while let Some(c) = t.next_char() {
     match c {
       '\\' if !escaped => escaped = true,
       '"' if !escaped => {
@@ -34,5 +35,5 @@ pub fn parse_static_str<'a>(p: &'a mut Parser) -> Result<String_, LocationError>
     }
   }
 
-  p.unexpected_eof()
+  t.unexpected_eof()
 }

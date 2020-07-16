@@ -1,4 +1,9 @@
 use super::*;
+use action::{ActionToExpect, ParseAction};
+use errors::LocationError;
+use statics::Keywords;
+use statics::{valid_name_char, NameBuilder};
+use types::parse_type;
 
 #[derive(Debug, Clone)]
 pub enum VarType {
@@ -21,7 +26,7 @@ impl Into<Action> for Variable {
 }
 
 pub fn parse_var<'a>(
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   var_type_option: Option<VarType>,
 ) -> Result<Variable, LocationError> {
   let mut name = NameBuilder::new();
@@ -31,9 +36,9 @@ pub fn parse_var<'a>(
     type_
   } else {
     let to_match = vec![&Keywords::Const, &Keywords::Let];
-    let match_result = p.try_match(to_match);
+    let match_result = t.try_match(to_match);
     if let None = match_result {
-      return p.unexpected_char(p.last_char());
+      return t.unexpected_char(t.last_char());
     }
 
     if let Keywords::Const = match_result.unwrap() {
@@ -44,48 +49,48 @@ pub fn parse_var<'a>(
   };
 
   // Parse name
-  let mut next_char = p.next_while(" \t\n");
+  let mut next_char = t.next_while(" \t\n");
   loop {
     if let Some(c) = next_char {
       match c {
         _ if valid_name_char(c) => name.push(c),
         ' ' | '\t' | '\n' => break,
         ':' | '=' => {
-          p.index -= 1;
+          t.index -= 1;
           break;
         }
-        c => return p.unexpected_char(c),
+        c => return t.unexpected_char(c),
       }
     } else {
-      return p.unexpected_eof();
+      return t.unexpected_eof();
     }
-    next_char = p.next_char();
+    next_char = t.next_char();
   }
 
   // Parse the variable type if set
-  next_char = p.next_while(" \t\n");
+  next_char = t.next_while(" \t\n");
   if let None = next_char {
-    return p.unexpected_eof();
+    return t.unexpected_eof();
   }
   if next_char.unwrap() == ':' {
-    data_type = Some(parse_type(p, true)?);
-    next_char = p.next_while(" \t\n");
+    data_type = Some(parse_type(t, true)?);
+    next_char = t.next_while(" \t\n");
   }
 
   // Check for the = symbol
   match next_char {
     Some('=') => {}
-    Some(c) => return p.unexpected_char(c),
-    None => return p.unexpected_eof(),
+    Some(c) => return t.unexpected_char(c),
+    None => return t.unexpected_eof(),
   }
 
   // Parse the action after the action after the =
-  let action = ParseAction::start(p, false, ActionToExpect::Assignment(""))?;
+  let action = ParseAction::start(t, false, ActionToExpect::Assignment(""))?;
 
   Ok(Variable {
     var_type,
     data_type,
-    name: name.to_string(p)?,
+    name: name.to_string(t)?,
     action: Box::new(action),
   })
 }

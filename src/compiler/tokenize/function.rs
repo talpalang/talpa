@@ -1,4 +1,8 @@
 use super::*;
+use actions::ParseActions;
+use errors::{LocationError, TokenizeError};
+use statics::{valid_name_char, NameBuilder};
+use types::parse_type;
 
 #[derive(Debug)]
 pub struct Function {
@@ -48,7 +52,7 @@ enum ParseFunctionState {
 }
 
 pub struct ParseFunction<'a> {
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   res: Function,
   state: ParseFunctionState,
 }
@@ -59,7 +63,7 @@ impl<'a> ParseFunction<'a> {
     match &self.state {
       ParseFunctionState::Nothing(info) => {
         if let Some(name) = &info.function_name {
-          self.res.name = Some(name.to_string(self.p)?);
+          self.res.name = Some(name.to_string(self.t)?);
         }
       }
       ParseFunctionState::Arg(info) if !info.parsing_name && info.name.len() > 0 => {
@@ -67,7 +71,7 @@ impl<'a> ParseFunction<'a> {
           self
             .res
             .args
-            .push((info.name.to_string(self.p)?, type_.clone()));
+            .push((info.name.to_string(self.t)?, type_.clone()));
         }
       }
       ParseFunctionState::Arg(_) => {}
@@ -78,9 +82,9 @@ impl<'a> ParseFunction<'a> {
     self.state = to;
     Ok(())
   }
-  pub fn start(p: &'a mut Parser) -> Result<Function, LocationError> {
+  pub fn start(t: &'a mut Tokenizer) -> Result<Function, LocationError> {
     let mut s = Self {
-      p,
+      t,
       res: Function::empty(),
       state: ParseFunctionState::Nothing(ParseFunctionStateNothing {
         function_name: None,
@@ -90,13 +94,13 @@ impl<'a> ParseFunction<'a> {
     Ok(s.res)
   }
   fn parse(&mut self) -> Result<(), LocationError> {
-    while let Some(c) = self.p.next_char() {
+    while let Some(c) = self.t.next_char() {
       match &mut self.state {
         ParseFunctionState::Nothing(meta) => match c {
           '\t' | '\n' | ' ' => {
             if let Some(_) = meta.function_name {
               // Not a valid name char return error
-              return self.p.error(TokenizeError::InvalidNameChar);
+              return self.t.error(TokenizeError::InvalidNameChar);
             }
           }
           '(' => {
@@ -113,7 +117,7 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // Not a valid name char return error
-            return self.p.error(TokenizeError::InvalidNameChar);
+            return self.t.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::Arg(meta) => match c {
@@ -125,7 +129,7 @@ impl<'a> ParseFunction<'a> {
           ')' => match meta.type_ {
             None if meta.name.len() > 0 => {
               // Argument not completed
-              return self.p.error(TokenizeError::IncompletedArgument);
+              return self.t.error(TokenizeError::IncompletedArgument);
             }
             _ => {
               // End of argument
@@ -134,7 +138,7 @@ impl<'a> ParseFunction<'a> {
           }, // end of argument, start parsing response
           // Parse the argument type
           _ if !meta.parsing_name => {
-            meta.type_ = Some(parse_type(self.p, true)?);
+            meta.type_ = Some(parse_type(self.t, true)?);
             self.change_state(ParseFunctionState::AfterArg)?;
           }
           c if valid_name_char(c) => {
@@ -143,7 +147,7 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // Not a valid name char return error
-            return self.p.error(TokenizeError::InvalidNameChar);
+            return self.t.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::AfterArg => match c {
@@ -156,12 +160,12 @@ impl<'a> ParseFunction<'a> {
           }
           _ => {
             // This is not what we are searching for
-            return self.p.error(TokenizeError::InvalidNameChar);
+            return self.t.error(TokenizeError::InvalidNameChar);
           }
         },
         ParseFunctionState::Response => match c {
           '{' => {
-            self.res.body = ParseActions::start(self.p)?;
+            self.res.body = ParseActions::start(self.t)?;
             return Ok(());
           }
           _ => {}

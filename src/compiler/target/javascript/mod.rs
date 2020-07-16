@@ -6,14 +6,14 @@ pub struct JavaScript {
 
 impl JavaScript {
   // Generate javascript code using tokens from parser
-  pub fn generate(parser: Parser) -> Result<Self, LocationError> {
+  pub fn generate(t: AnilizedTokens) -> Result<Self, LocationError> {
     let mut code = Self { src: String::new() };
     // define functions
-    for func in parser.functions {
+    for (_, func) in t.functions {
       let function = code.function(func);
       code.src += &function;
     }
-    for glob in parser.vars {
+    for (_, glob) in t.vars {
       let global = code.global(glob);
       code.src += &global;
     }

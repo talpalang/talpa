@@ -1,4 +1,5 @@
 use super::*;
+use anylize::AnylizeError;
 use core::fmt::Display;
 use files::CodeLocation;
 use std::error::Error;
@@ -13,6 +14,19 @@ pub struct LocationError {
 }
 
 impl LocationError {
+  pub fn new_simple(err: impl Into<StateError>) -> Self {
+    Self {
+      location: CodeLocation {
+        file_name: None,
+        x: None,
+        y: None,
+      },
+      error_type: err.into(),
+      prev_line: None,
+      line: None,
+      next_line: None,
+    }
+  }
   fn err(&self) -> String {
     let mut output: Vec<String> = vec![];
 
@@ -77,14 +91,22 @@ impl Display for LocationError {
 #[derive(Clone)]
 pub enum StateError {
   Tokenize(TokenizeError),
-  // Target(TargetError),
+  Anylize(AnylizeError),
   IO(IOError),
+  // Target(TargetError),
+}
+
+impl Into<StateError> for AnylizeError {
+  fn into(self) -> StateError {
+    StateError::Anylize(self)
+  }
 }
 
 impl Display for StateError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::Tokenize(error) => write!(f, "{}", error),
+      Self::Anylize(error) => write!(f, "{}", error),
       Self::IO(error) => write!(f, "IO error: {}", error),
       // Self::Target(error) => write!(f, "{}", error),
     }

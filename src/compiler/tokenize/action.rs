@@ -1,4 +1,11 @@
 use super::*;
+use actions::ParseActions;
+use errors::{LocationError, TokenizeError};
+use numbers::NumberTypes;
+use statics::Keywords;
+use statics::{valid_name_char, NameBuilder};
+use strings::parse_static_str;
+use variable::parse_var;
 
 #[derive(Debug, Clone)]
 pub enum Action {
@@ -41,7 +48,7 @@ impl Into<Action> for ActionFunctionCall {
 }
 
 pub struct ParseAction<'a> {
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   res: Option<Action>,
   action_to_expect: ActionToExpect,
 }
@@ -158,23 +165,23 @@ impl Into<Action> for ActionFor {
 
 impl<'a> ParseAction<'a> {
   pub fn start(
-    p: &'a mut Parser,
+    t: &'a mut Tokenizer,
     go_back_one: bool,
     action_to_expect: ActionToExpect,
   ) -> Result<Action, LocationError> {
     if go_back_one {
-      p.index -= 1;
+      t.index -= 1;
     }
     let mut s = Self {
       action_to_expect,
-      p,
+      t,
       res: None,
     };
     s.detect()?;
     if let Some(res) = s.res {
       Ok(res)
     } else {
-      s.p.error(TokenizeError::UnexpectedResult)
+      s.t.error(TokenizeError::UnexpectedResult)
     }
   }
   fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), LocationError> {
@@ -189,7 +196,7 @@ impl<'a> ParseAction<'a> {
       ParseActionState::Assigment(meta) => {
         if let None = meta.action {
           return self
-            .p
+            .t
             .error(TokenizeError::Custom("Missing variable assignment"));
         }
 
@@ -216,7 +223,7 @@ impl<'a> ParseAction<'a> {
 
   fn detect(&mut self) -> Result<(), LocationError> {
     let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
-      self.p.try_match(vec![
+      self.t.try_match(vec![
         &Keywords::Const,
         &Keywords::Let,
         &Keywords::Return,
@@ -240,7 +247,7 @@ impl<'a> ParseAction<'a> {
           } else {
             VarType::Let
           };
-          let new_var = parse_var(self.p, Some(var_type))?;
+          let new_var = parse_var(self.t, Some(var_type))?;
           self.res = Some(new_var.into());
         }
         Keywords::Return => {
@@ -256,7 +263,7 @@ impl<'a> ParseAction<'a> {
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
         Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type => {
-          return self.p.error(TokenizeError::UnexpectedResult)
+          return self.t.error(TokenizeError::UnexpectedResult)
         }
       }
       return Ok(());
@@ -276,11 +283,11 @@ impl<'a> ParseAction<'a> {
     let mut detected_action = DetectedAction::VarRefName;
     let mut name_completed = false;
 
-    while let Some(c) = self.p.next_char() {
+    while let Some(c) = self.t.next_char() {
       match c {
         '"' if name.len() == 0 => {
           // Parse a static string
-          let parsed = parse_static_str(self.p)?;
+          let parsed = parse_static_str(self.t)?;
           self.res = Some(parsed.into());
           return Ok(());
         }
@@ -303,29 +310,29 @@ impl<'a> ParseAction<'a> {
         _ if (valid_name_char(c) || c == '.') && !name_completed => name.push(c),
         c => {
           if name_completed {
-            self.p.index -= 1;
+            self.t.index -= 1;
             break;
           }
 
           if let ActionToExpect::Assignment(valid_unexpted_chars) = self.action_to_expect {
             if valid_unexpted_chars.contains(c) {
-              self.p.index -= 1;
+              self.t.index -= 1;
               break;
             }
           }
-          return self.p.unexpected_char(c);
+          return self.t.unexpected_char(c);
         }
       }
     }
 
-    if let Some(number_parser) = name.is_number(self.p) {
+    if let Some(number_parser) = name.is_number(self.t) {
       // The defined name is actually a number
       let number = number_parser.result(NumberTypes::Auto)?;
       self.res = Some(number.into());
       return Ok(());
     }
 
-    let name_string = name.to_string(self.p)?;
+    let name_string = name.to_string(self.t)?;
 
     // Do things relative to the detected action
     match detected_action {
@@ -354,37 +361,37 @@ impl<'a> ParseAction<'a> {
     };
 
     if check_for_function_open_sign {
-      match self.p.next_char() {
+      match self.t.next_char() {
         Some('(') => {} // This is what we exect. return no error
-        Some(c) => return self.p.unexpected_char(c),
-        None => return self.p.unexpected_eof(),
+        Some(c) => return self.t.unexpected_char(c),
+        None => return self.t.unexpected_eof(),
       }
     }
 
     loop {
-      match self.p.next_while(" \t\n") {
+      match self.t.next_while(" \t\n") {
         Some(')') | None => {
-          self.p.index -= 1;
+          self.t.index -= 1;
           break;
         }
         _ => {}
       }
 
-      let action = ParseAction::start(self.p, true, ActionToExpect::Assignment(",)"))?;
+      let action = ParseAction::start(self.t, true, ActionToExpect::Assignment(",)"))?;
       res.arguments.push(action);
-      match self.p.next_while(" \t\n") {
+      match self.t.next_while(" \t\n") {
         Some(',') => continue,
         _ => {
-          self.p.index -= 1;
+          self.t.index -= 1;
           break;
         }
       }
     }
 
-    match self.p.next_while(" \t\n") {
+    match self.t.next_while(" \t\n") {
       Some(')') => {} // This is what we exect. return no error
-      Some(c) => return self.p.unexpected_char(c),
-      None => return self.p.unexpected_eof(),
+      Some(c) => return self.t.unexpected_char(c),
+      None => return self.t.unexpected_eof(),
     }
 
     Ok(res)
@@ -397,26 +404,26 @@ impl<'a> ParseAction<'a> {
     let mut res = ParseActionStateAssigment { name, action: None };
 
     if check_for_equal_sign {
-      match self.p.next_while(" \t\n") {
+      match self.t.next_while(" \t\n") {
         Some('=') => {}
-        Some(c) => return self.p.unexpected_char(c),
-        None => return self.p.unexpected_eof(),
+        Some(c) => return self.t.unexpected_char(c),
+        None => return self.t.unexpected_eof(),
       }
     }
 
-    match self.p.next_while(" \t\n") {
+    match self.t.next_while(" \t\n") {
       Some(_) => {
-        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment(""))?;
+        let action = ParseAction::start(self.t, true, ActionToExpect::Assignment(""))?;
         res.action = Some(action);
       }
-      None => return self.p.unexpected_eof(),
+      None => return self.t.unexpected_eof(),
     }
 
     Ok(res)
   }
   fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, LocationError> {
-    if let None = self.p.next_while(" \t\n") {
-      return self.p.unexpected_eof();
+    if let None = self.t.next_while(" \t\n") {
+      return self.t.unexpected_eof();
     };
 
     let mut for_item_name: Option<String> = None;
@@ -424,48 +431,48 @@ impl<'a> ParseAction<'a> {
     // Parse the bit between the "for"/"while" and "{"
     let loop_based_on = match loop_type {
       LoopType::While => Some(ParseAction::start(
-        self.p,
+        self.t,
         true,
         ActionToExpect::Assignment("{"),
       )?),
       LoopType::For => {
         let mut name = NameBuilder::new();
         loop {
-          let c = self.p.next_char();
+          let c = self.t.next_char();
           match c {
             Some(' ') | Some('\t') | Some('\n') => break,
             Some(c) if valid_name_char(c) => name.push(c),
-            Some(c) => return self.p.unexpected_char(c),
-            None => return self.p.unexpected_eof(),
+            Some(c) => return self.t.unexpected_char(c),
+            None => return self.t.unexpected_eof(),
           }
         }
 
-        for_item_name = Some(name.to_string(self.p)?);
-        self.p.expect("in")?;
+        for_item_name = Some(name.to_string(self.t)?);
+        self.t.expect("in")?;
 
-        if let None = self.p.next_while(" \t\n") {
-          return self.p.unexpected_eof();
+        if let None = self.t.next_while(" \t\n") {
+          return self.t.unexpected_eof();
         }
 
         Some(ParseAction::start(
-          self.p,
+          self.t,
           true,
           ActionToExpect::Assignment("{"),
         )?)
       }
       LoopType::Loop => {
-        self.p.index -= 1;
+        self.t.index -= 1;
         None
       }
     };
 
-    match self.p.next_while(" \t\n") {
+    match self.t.next_while(" \t\n") {
       Some('{') => {}
-      Some(c) => return self.p.unexpected_char(c),
-      None => return self.p.unexpected_eof(),
+      Some(c) => return self.t.unexpected_char(c),
+      None => return self.t.unexpected_eof(),
     };
 
-    let actions = ParseActions::start(self.p)?;
+    let actions = ParseActions::start(self.t)?;
 
     Ok(match loop_type {
       LoopType::For => ParseActionState::For(ActionFor {
@@ -483,13 +490,13 @@ impl<'a> ParseAction<'a> {
   fn parse_return(&mut self) -> Result<ParseActionStateReturn, LocationError> {
     let mut res = ParseActionStateReturn { action: None };
 
-    match self.p.next_while(" \t\n") {
+    match self.t.next_while(" \t\n") {
       Some('}') => {}
       Some(_) => {
-        let action = ParseAction::start(self.p, true, ActionToExpect::Assignment("}"))?;
+        let action = ParseAction::start(self.t, true, ActionToExpect::Assignment("}"))?;
         res.action = Some(action);
       }
-      None => return self.p.unexpected_eof(),
+      None => return self.t.unexpected_eof(),
     }
     Ok(res)
   }

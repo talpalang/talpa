@@ -49,11 +49,18 @@ This roadmap is used to track the progress on the project. If you add a feature 
 
    * Parsing stage 2 verifying the data and making it more accessible
 
-      * [ ]  Validating all types
-        * [ ]  User created types
-        * [ ]  Buildin types
-      * [ ]  List of actions
-        * [ ]  Make it impossible to set variable without using it
+      * [x] Functions
+        * [x] Name
+          * [x] Duplicates
+      * [x] Enums, Structs, Global Types
+        * [x] Name
+          * [x] Duplicates
+      * [ ] Validate type names
+        * [ ] Duplicates
+      * [ ] List of actions
+        * [ ] Make it impossible to set variable without using it
+        * [ ] No duplicated variable names
+        * [ ] No variable references that do not exsists
 
    * Documentation
 

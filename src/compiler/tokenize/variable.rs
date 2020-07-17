@@ -1,7 +1,6 @@
 use super::*;
 use action::{ActionToExpect, ParseAction};
 use errors::LocationError;
-use statics::Keywords;
 use statics::{valid_name_char, NameBuilder};
 use types::parse_type;
 

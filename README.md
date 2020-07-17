@@ -90,7 +90,7 @@ cargo test function
 
 Some design goals I think are important:
 - Preferably no dependencies
-- No non cargo tools required to build this project *([By installing rust](https://www.rust-lang.org/tools/install) you should have everything to get started working on this though i might require rust nightly if needed)*
+- No non cargo tools required to build this project *([By installing rust](https://www.rust-lang.org/tools/install) you should have everything to get started working on this though I might require rust nightly if needed)*
 
 
 ## License

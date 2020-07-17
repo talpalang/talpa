@@ -56,6 +56,7 @@ impl JavaScript {
     // match an action and return code
     let mut src = String::new();
     let action_code = match action {
+      Action::Assigment(res) => res.name+" == "+&self.action(*res.action),
       Action::Break => "break;\n".to_string(),
       Action::Continue => "continue;\n".to_string(),
       Action::For(res) => self.action_for(res),
@@ -67,8 +68,6 @@ impl JavaScript {
       Action::Variable(res) => self.action_var(res),
       Action::VarRef(res) => res,
       Action::While(res) => self.action_while(res),
-      // add remaining actions
-      Action::Assigment(_res) => "/* Assignment is unimplemented */".to_string(),
     };
     src += &action_code;
     return src;

@@ -59,12 +59,17 @@ This roadmap is used to track the progress on the project. If you add a feature 
 
       * [x] Functions
         * [x] Name
-          * [x] Duplicates
+          * [x] Error on Duplicates
+          * [ ] Error on invalid name useage like fn, enum, struct
+          * [ ] Warn on wrong name
       * [x] Enums, Structs, Global Types
         * [x] Name
-          * [x] Duplicates
+          * [x] Error on Duplicates
+          * [ ] Error on invalid name useage like fn, enum, struct
+          * [ ] Warn on wrong name
       * [ ] Validate type names
         * [ ] Duplicates
+        * [ ] Reference to variable must exsist
       * [ ] List of actions
         * [ ] Make it impossible to set variable without using it
         * [ ] No duplicated variable names

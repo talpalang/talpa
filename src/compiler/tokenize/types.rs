@@ -1,4 +1,9 @@
 use super::*;
+use action::{ActionToExpect, ParseAction};
+use errors::{LocationError, TokenizeError};
+use statics::{valid_name_char, NameBuilder};
+use std::collections::HashMap;
+use utils::MatchString;
 
 #[derive(Debug, Clone)]
 pub enum Type {
@@ -93,17 +98,17 @@ impl MatchString for DetectType {
   }
 }
 
-pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, LocationError> {
+pub fn parse_type<'a>(t: &'a mut Tokenizer, go_back_one: bool) -> Result<Type, LocationError> {
   if go_back_one {
-    p.index -= 1;
+    t.index -= 1;
   }
 
-  if let None = p.next_while(" \t\n") {
-    return p.unexpected_eof();
+  if let None = t.next_while(" \t\n") {
+    return t.unexpected_eof();
   }
-  p.index -= 1;
+  t.index -= 1;
 
-  match p.try_match(vec![
+  match t.try_match(vec![
     &DetectType::Int,
     &DetectType::I8,
     &DetectType::I16,
@@ -121,24 +126,24 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
     &DetectType::Array,
   ]) {
     Some(&DetectType::Array) => {
-      let res = parse_type(p, false)?;
+      let res = parse_type(t, false)?;
       return Ok(Type::Array(Box::new(res)));
     }
     Some(matched_type) => {
-      let add_to_substract = if let Some(c) = p.next_char() {
+      let add_to_substract = if let Some(c) = t.next_char() {
         if let &DetectType::Struct = matched_type {
           if c == '{' || c == ' ' || c == '\n' {
-            let res = parse_struct(p, true, c == '{')?;
+            let res = parse_struct(t, true, c == '{')?;
             return Ok(Type::Struct(res));
           }
         } else if let &DetectType::Enum = matched_type {
           if c == '{' || c == ' ' || c == '\n' {
-            let res = parse_enum(p, true, c == '{')?;
+            let res = parse_enum(t, true, c == '{')?;
             return Ok(Type::Enum(res));
           }
         } else if !valid_name_char(c) {
           if let Some(v) = matched_type.to_type() {
-            p.index -= 1;
+            t.index -= 1;
             return Ok(v);
           }
         }
@@ -146,83 +151,83 @@ pub fn parse_type<'a>(p: &'a mut Parser, go_back_one: bool) -> Result<Type, Loca
       } else {
         0
       };
-      p.index -= matched_type.get_string().len() + add_to_substract;
+      t.index -= matched_type.get_string().len() + add_to_substract;
     }
     _ => {}
   };
 
   let mut type_name = NameBuilder::new();
-  while let Some(c) = p.next_char() {
+  while let Some(c) = t.next_char() {
     match c {
       _ if valid_name_char(c) => type_name.push(c),
       _ => {
-        p.index -= 1;
-        let type_string = type_name.to_string(p)?;
+        t.index -= 1;
+        let type_string = type_name.to_string(t)?;
         return Ok(Type::TypeRef(type_string));
       }
     }
   }
-  p.unexpected_eof()
+  t.unexpected_eof()
 }
 
 #[derive(Debug, Clone)]
 pub struct GlobalType {
-  name: String,
-  type_: Type,
+  pub name: String,
+  pub type_: Type,
 }
 
-pub fn parse_global_type<'a>(p: &'a mut Parser) -> Result<GlobalType, LocationError> {
+pub fn parse_global_type<'a>(t: &'a mut Tokenizer) -> Result<GlobalType, LocationError> {
   // Parse the global type name
-  let first_name_char = match p.next_while(" \t\n") {
-    None => return p.unexpected_eof(),
+  let first_name_char = match t.next_while(" \t\n") {
+    None => return t.unexpected_eof(),
     Some('{') => {
-      return p.error(TokenizeError::Custom(
+      return t.error(TokenizeError::Custom(
         "Struct requires name for example: \"struct foo {}\"",
       ))
     }
-    Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+    Some(c) if !valid_name_char(c) => return t.unexpected_char(c),
     Some(c) => c,
   };
   let mut struct_name = NameBuilder::new_with_char(first_name_char);
-  while let Some(c) = p.next_char() {
+  while let Some(c) = t.next_char() {
     match c {
       ' ' | '\t' | '\n' => {
-        if let Some('=') = p.next_while(" \t") {
+        if let Some('=') = t.next_while(" \t") {
           break;
         }
-        return p.unexpected_char(c);
+        return t.unexpected_char(c);
       }
       '=' => break,
       _ if valid_name_char(c) => struct_name.push(c),
-      _ => return p.unexpected_char(c),
+      _ => return t.unexpected_char(c),
     }
   }
 
-  let name = struct_name.to_string(p)?;
-  let type_ = parse_type(p, false)?;
+  let name = struct_name.to_string(t)?;
+  let type_ = parse_type(t, false)?;
 
   Ok(GlobalType { name, type_ })
 }
 
 #[derive(Debug, Clone)]
 pub struct Enum {
-  name: Option<String>,
-  fields: Vec<EnumField>,
+  pub name: Option<String>,
+  pub fields: Vec<EnumField>,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumField {
-  name: String,
-  value: Option<Action>,
+  pub name: String,
+  pub value: Option<Action>,
 }
 
 pub fn parse_enum<'a>(
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   inline: bool,
   back_one: bool,
 ) -> Result<Enum, LocationError> {
   if back_one {
-    p.index -= 1;
+    t.index -= 1;
   }
 
   let mut res = Enum {
@@ -232,79 +237,79 @@ pub fn parse_enum<'a>(
 
   if inline {
     // Find the enum opening
-    match p.next_while(" \t") {
+    match t.next_while(" \t") {
       Some('{') => {}
-      Some(c) => return p.unexpected_char(c),
-      None => return p.unexpected_eof(),
+      Some(c) => return t.unexpected_char(c),
+      None => return t.unexpected_eof(),
     }
   } else {
     // Parse the enum name
-    let first_name_char = match p.next_while(" \t\n") {
-      None => return p.unexpected_eof(),
+    let first_name_char = match t.next_while(" \t\n") {
+      None => return t.unexpected_eof(),
       Some('{') => {
-        return p.error(TokenizeError::Custom(
+        return t.error(TokenizeError::Custom(
           "Struct requires name for example: \"struct foo {}\"",
         ))
       }
-      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return t.unexpected_char(c),
       Some(c) => c,
     };
     let mut struct_name = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = p.next_char() {
+    while let Some(c) = t.next_char() {
       match c {
         ' ' | '\t' | '\n' => {
-          if let Some('{') = p.next_while(" \t") {
+          if let Some('{') = t.next_while(" \t") {
             break;
           }
-          return p.unexpected_char(c);
+          return t.unexpected_char(c);
         }
         '{' => break,
         _ if valid_name_char(c) => struct_name.push(c),
-        _ => return p.unexpected_char(c),
+        _ => return t.unexpected_char(c),
       }
     }
 
-    res.name = Some(struct_name.to_string(p)?);
+    res.name = Some(struct_name.to_string(t)?);
   }
 
   // Parse the enum fields
   loop {
     // Parse field name
-    let first_name_char = match p.next_while(" \t\n") {
-      None => return p.unexpected_eof(),
+    let first_name_char = match t.next_while(" \t\n") {
+      None => return t.unexpected_eof(),
       Some('}') => break, // end of enum
-      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return t.unexpected_char(c),
       Some(c) => c,
     };
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = p.next_char() {
+    while let Some(c) = t.next_char() {
       match c {
         _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
         '\n' => {
-          p.index -= 1;
+          t.index -= 1;
           break;
         }
-        _ => return p.unexpected_char(c),
+        _ => return t.unexpected_char(c),
       }
     }
     let mut to_add = EnumField {
-      name: field_name_builder.to_string(p)?,
+      name: field_name_builder.to_string(t)?,
       value: None,
     };
 
     // Parse the = symbol
-    match p.next_while(" \t") {
+    match t.next_while(" \t") {
       Some('=') => {
-        let action = ParseAction::start(p, false, ActionToExpect::Assignment(","))?;
-        match p.next_while(" \t") {
+        let action = ParseAction::start(t, false, ActionToExpect::Assignment(","))?;
+        match t.next_while(" \t") {
           Some('}') => {
             res.fields.push(to_add);
             break;
           }
           Some('\n') => {}
-          Some(c) => return p.unexpected_char(c),
-          None => return p.unexpected_eof(),
+          Some(c) => return t.unexpected_char(c),
+          None => return t.unexpected_eof(),
         }
         to_add.value = Some(action);
       }
@@ -313,8 +318,8 @@ pub fn parse_enum<'a>(
         break;
       }
       Some('\n') => {}
-      Some(c) => return p.unexpected_char(c),
-      None => return p.unexpected_eof(),
+      Some(c) => return t.unexpected_char(c),
+      None => return t.unexpected_eof(),
     };
 
     res.fields.push(to_add);
@@ -326,18 +331,18 @@ pub fn parse_enum<'a>(
 #[derive(Debug, Clone)]
 pub struct Struct {
   /// The struct name if it's a named struct, inline structs don't have names
-  name: Option<String>,
+  pub name: Option<String>,
   /// The struct fields
-  fields: HashMap<String, Type>,
+  pub fields: HashMap<String, Type>,
 }
 
 pub fn parse_struct<'a>(
-  p: &'a mut Parser,
+  t: &'a mut Tokenizer,
   inline: bool,
   back_one: bool,
 ) -> Result<Struct, LocationError> {
   if back_one {
-    p.index -= 1;
+    t.index -= 1;
   }
 
   let mut res = Struct {
@@ -347,65 +352,65 @@ pub fn parse_struct<'a>(
 
   if inline {
     // Find the struct opening
-    match p.next_while(" \t") {
+    match t.next_while(" \t") {
       Some('{') => {}
-      Some(c) => return p.unexpected_char(c),
-      None => return p.unexpected_eof(),
+      Some(c) => return t.unexpected_char(c),
+      None => return t.unexpected_eof(),
     }
   } else {
     // Parse the struct name
-    let first_name_char = match p.next_while(" \t\n") {
-      None => return p.unexpected_eof(),
+    let first_name_char = match t.next_while(" \t\n") {
+      None => return t.unexpected_eof(),
       Some('{') => {
-        return p.error(TokenizeError::Custom(
+        return t.error(TokenizeError::Custom(
           "Struct requires name for example: \"struct foo {}\"",
         ))
       }
-      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return t.unexpected_char(c),
       Some(c) => c,
     };
     let mut struct_name = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = p.next_char() {
+    while let Some(c) = t.next_char() {
       match c {
         ' ' | '\t' | '\n' => {
-          if let Some('{') = p.next_while(" \t") {
+          if let Some('{') = t.next_while(" \t") {
             break;
           }
-          return p.unexpected_char(c);
+          return t.unexpected_char(c);
         }
         '{' => break,
         _ if valid_name_char(c) => struct_name.push(c),
-        _ => return p.unexpected_char(c),
+        _ => return t.unexpected_char(c),
       }
     }
 
-    res.name = Some(struct_name.to_string(p)?);
+    res.name = Some(struct_name.to_string(t)?);
   }
 
   // Parse struct fields
   loop {
     // Parse field name
-    let first_name_char = match p.next_while(" \t\n") {
-      None => return p.unexpected_eof(),
+    let first_name_char = match t.next_while(" \t\n") {
+      None => return t.unexpected_eof(),
       Some('}') => break, // end of struct
-      Some(c) if !valid_name_char(c) => return p.unexpected_char(c),
+      Some(c) if !valid_name_char(c) => return t.unexpected_char(c),
       Some(c) => c,
     };
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = p.next_char() {
+    while let Some(c) = t.next_char() {
       match c {
         _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
-        _ => return p.unexpected_char(c),
+        _ => return t.unexpected_char(c),
       }
     }
-    let field_name = field_name_builder.to_string(p)?;
+    let field_name = field_name_builder.to_string(t)?;
 
     // Parse field type
-    if let None = p.next_while(" \t") {
-      return p.unexpected_eof();
+    if let None = t.next_while(" \t") {
+      return t.unexpected_eof();
     };
-    let parsed_type = parse_type(p, true)?;
+    let parsed_type = parse_type(t, true)?;
 
     res.fields.insert(field_name, parsed_type);
   }

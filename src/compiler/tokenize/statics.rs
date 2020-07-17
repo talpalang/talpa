@@ -1,4 +1,7 @@
 use super::*;
+use errors::{LocationError, TokenizeError};
+use numbers::NumberParser;
+use utils::MatchString;
 
 pub static VALID_NAME_CHARS: &'static str =
   "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
@@ -19,24 +22,24 @@ impl NameBuilder {
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }
-  pub fn is_number<'a>(&self, p: &'a mut Parser) -> Option<NumberParser<'a>> {
+  pub fn is_number<'a>(&self, t: &'a mut Tokenizer) -> Option<NumberParser<'a>> {
     for letter in &self.0 {
       match *letter as char {
         '.' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {}
         _ => return None,
       }
     }
-    let parser = NumberParser::new_without_starting(p, self.0.clone());
+    let parser = NumberParser::new_without_starting(t, self.0.clone());
     Some(parser)
   }
-  pub fn to_string<'a>(&self, p: &'a Parser) -> Result<String, LocationError> {
+  pub fn to_string<'a>(&self, t: &'a Tokenizer) -> Result<String, LocationError> {
     if self.len() == 0 {
       return Ok(String::new());
     }
     if let Some(c) = self.0.get(0) {
       match *c as char {
         '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {
-          return p.error(TokenizeError::Custom("name cannot start with a number"))
+          return t.error(TokenizeError::Custom("name cannot start with a number"))
         }
         _ => {}
       }
@@ -44,7 +47,7 @@ impl NameBuilder {
 
     match String::from_utf8(self.0.clone()) {
       Ok(parsed_string) => Ok(parsed_string),
-      Err(_) => p.error(TokenizeError::Custom("Invalid utf8 string")),
+      Err(_) => t.error(TokenizeError::Custom("Invalid utf8 string")),
     }
   }
   pub fn len(&self) -> usize {

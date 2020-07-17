@@ -1,8 +1,17 @@
 use super::*;
+use errors::{IOError, LocationError, StateError, TokenizeError};
+use files::CodeLocation;
+use function::ParseFunction;
+use statics::Keywords;
 use std::collections::HashMap;
 use std::fmt;
+use std::fs::File;
+use std::io::prelude::*;
+use types::{parse_enum, parse_global_type, parse_struct};
+use utils::MatchString;
+use variable::parse_var;
 
-pub struct Parser {
+pub struct Tokenizer {
   contents: Vec<u8>,
   file_name: Option<String>,
   pub index: usize,
@@ -14,7 +23,8 @@ pub struct Parser {
 }
 
 #[derive(Debug)]
-pub struct SimpleParserOutput<'a> {
+struct SimpleTokenizer<'a> {
+  pub file_name: &'a Option<String>,
   pub functions: &'a Vec<Function>,
   pub vars: &'a Vec<Variable>,
   pub structs: &'a Vec<Struct>,
@@ -22,16 +32,17 @@ pub struct SimpleParserOutput<'a> {
   pub types: &'a Vec<GlobalType>,
 }
 
-impl fmt::Debug for Parser {
+impl fmt::Debug for Tokenizer {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let simple_parser = SimpleParserOutput {
+    let simple_tokenized = SimpleTokenizer {
+      file_name: &self.file_name,
       functions: &self.functions,
       vars: &self.vars,
       structs: &self.structs,
       enums: &self.enums,
       types: &self.types,
     };
-    writeln!(f, "{:#?}", simple_parser)
+    writeln!(f, "{:#?}", simple_tokenized)
   }
 }
 
@@ -47,9 +58,9 @@ pub enum DataType<'a> {
   Direct(Vec<u8>),
 }
 
-impl Parser {
-  pub fn parse(contents: DataType) -> Result<Self, LocationError> {
-    let mut parser = Self {
+impl Tokenizer {
+  pub fn tokenize(contents: DataType) -> Result<Self, LocationError> {
+    let mut tokenizer = Self {
       index: 0,
       contents: vec![],
       functions: vec![],
@@ -64,7 +75,7 @@ impl Parser {
       DataType::File(location) => {
         let mut file = match File::open(location) {
           Ok(f) => f,
-          Err(err) => return parser.custom_error(IOError::IO(format!("{}", err)), None, true),
+          Err(err) => return tokenizer.custom_error(IOError::IO(format!("{}", err)), None, true),
         };
         let mut contents: Vec<u8> = vec![];
         file.read_to_end(&mut contents).unwrap();
@@ -85,10 +96,10 @@ impl Parser {
       tokens.remove(i);
     }
 
-    parser.contents = tokens;
+    tokenizer.contents = tokens;
 
-    parser.parse_nothing()?;
-    Ok(parser)
+    tokenizer.parse_nothing()?;
+    Ok(tokenizer)
   }
 
   pub fn error<T, Y>(&self, error: Y) -> Result<T, LocationError>
@@ -393,6 +404,10 @@ impl Parser {
       }
     }
     Ok(())
+  }
+
+  pub fn get_file_name(&self) -> Option<String> {
+    self.file_name.clone()
   }
 
   /*

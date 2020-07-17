@@ -1,18 +1,14 @@
-mod errors;
+pub mod anylize;
+pub mod errors;
 pub mod files;
-mod target;
+pub mod target;
 pub mod tokenize;
 
-use crate::compiler::target::generate;
-pub use errors::*;
-use std::fs::File;
-use std::io::prelude::*;
+use anylize::anilize_tokens;
+pub use errors::LocationError;
+use target::generate;
 pub use target::Lang;
-use tokenize::Parser;
-pub use tokenize::{
-  Action, ActionFor, ActionFunctionCall, Actions, DataType, Function, Number, String_, VarType,
-  Variable,
-};
+use tokenize::{DataType, Tokenizer};
 
 /// This contains compiler options, like the amound of threads to use or the target language
 pub struct Options {
@@ -27,11 +23,20 @@ impl Compiler {
   pub fn start(options: Options) -> Result<(), LocationError> {
     let c = Self { options };
 
-    let res = Parser::parse(DataType::File("./example.tp"))?;
-    println!("Debug output:");
-    println!("{:#?}", res);
+    let res = Tokenizer::tokenize(DataType::File("./example.tp"))?;
+    let (formatted_res, anilize_res) = anilize_tokens(&res);
 
-    let src = generate(res, c.options.lang)?;
+    // We don't need the res data anymore from here on wasted memory.
+    drop(res);
+
+    for error in anilize_res.errors {
+      return Err(LocationError::new_simple(error));
+    }
+
+    println!("Debug output:");
+    println!("{:#?}", formatted_res);
+
+    let src = generate(formatted_res, c.options.lang)?;
     println!("Parse output:");
     println!("{}", src);
     Ok(())

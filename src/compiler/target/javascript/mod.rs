@@ -66,9 +66,9 @@ impl JavaScript {
       Action::StaticString(res) => self.action_str(res),
       Action::Variable(res) => self.action_var(res),
       Action::VarRef(res) => res,
+      Action::While(res) => self.action_while(res),
       // add remaining actions
       Action::Assigment(_res) => "/* Assignment is unimplemented */".to_string(),
-      Action::While(_res) => "/* While is unimplemented */".to_string(),
     };
     src += &action_code;
     return src;
@@ -137,6 +137,15 @@ impl JavaScript {
     src += " = ";
     src += &self.action(*action.action);
     src += ";\n";
+    return src;
+  }
+  pub fn action_while(&mut self, action: tokenize::ActionWhile) -> String {
+    let mut src = String::new();
+    src += &format!("while ({}) {{\n", self.action(*action.true_value));
+    for act in action.actions.list {
+      src += &self.action(act);
+    }
+    src += "}\n";
     return src;
   }
 }

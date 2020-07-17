@@ -6,43 +6,43 @@
 
 #### `int`
 
-Intager matches the default intager type of the target language
+Integer matches the default integer type of the target language
 
 #### `i8`
 
-8 bit intager
+8 bit integer
 
 #### `i16`
 
-16 bit intager
+16 bit integer
 
 #### `i32`
 
-32 bit intager
+32 bit integer
 
 #### `i64`
 
-64 bit intager
+64 bit integer
 
 #### `uint`
 
-Unsigned intager matches the default intager type of the target language
+Unsigned integer matches the default integer type of the target language
 
 #### `u8`
 
-8 bit unsigned intager
+8 bit unsigned integer
 
 #### `u16`
 
-16 bit unsigned intager
+16 bit unsigned integer
 
 #### `u32`
 
-32 bit unsigned intager
+32 bit unsigned integer
 
 #### `u64`
 
-64 bit unsigned intager
+64 bit unsigned integer
 
 #### `string`
 

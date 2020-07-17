@@ -40,6 +40,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
           * [x]  `loop {}`
           * [x]  `while true {}`
           * [x]  `for foo in bar {}`
+          * [ ]  `if foo {} else if bar {} else {}`
       * [ ] Importing
         * [ ] Detecting to import someting
         * [ ] Validating imports
@@ -90,7 +91,7 @@ cargo test function
 
 Some design goals I think are important:
 - Preferably no dependencies
-- No non cargo tools required to build this project *([By installing rust](https://www.rust-lang.org/tools/install) you should have everything to get started working on this though i might require rust nightly if needed)*
+- No non cargo tools required to build this project *([By installing rust](https://www.rust-lang.org/tools/install) you should have everything to get started working on this though I might require rust nightly if needed)*
 
 
 ## License

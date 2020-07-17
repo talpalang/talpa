@@ -7,6 +7,9 @@
 
 - [Functions](Functions.md)
 - [Types](Types.md)
+- [Loops](Loops.md)
+- [Conditions](Conditions.md)
+
 
 ## Developer Docs
 

@@ -140,8 +140,8 @@ impl Into<LoopType> for Keywords {
 
 #[derive(Debug, Clone)]
 pub struct ActionWhile {
-  actions: Actions,
-  true_value: Box<Action>,
+  pub actions: Actions,
+  pub true_value: Box<Action>,
 }
 
 impl Into<Action> for ActionWhile {

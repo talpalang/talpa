@@ -53,8 +53,10 @@ Another way of comparing multiple conditions is to use the `match` statement.
 ```rust
 match foo {
   // if foo == bar
-  bar => do_something()
+  bar => do_something_bar()
   // else if foo == baz
-  baz => do_something_else()
+  baz => do_something_baz()
+  // else
+  _ => do_something_else()
 }
 ```

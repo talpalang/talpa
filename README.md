@@ -40,6 +40,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
           * [x]  `loop {}`
           * [x]  `while true {}`
           * [x]  `for foo in bar {}`
+          * [ ]  `if foo {} else if bar {} else {}`
       * [ ] Importing
         * [ ] Detecting to import someting
         * [ ] Validating imports

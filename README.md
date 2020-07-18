@@ -64,7 +64,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
       * [ ]  List of actions
         * [ ]  Make it impossible to set variable without using it
         * [ ]  No duplicated variable names
-        * [ ]  No variable references that do not exsists
+        * [ ]  No variable references that do not exist
 
    * Documentation
 

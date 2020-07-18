@@ -46,7 +46,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [ ]  Detecting to import someting
         * [ ]  Validating imports
         * [ ]  Detect import cycles
-        * [ ]  Propper debugging
+        * [ ]  Proper debugging
           * [ ]  Error messages show file origin
 
    * Parsing stage 2 verifying the data and making it more accessible

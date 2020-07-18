@@ -1,17 +1,33 @@
+mod utils;
+
+#[cfg(test)]
+mod tests;
+
 use super::*;
 use core::fmt::Display;
 use std::collections::HashMap;
 use std::fmt;
-use tokenize::{Enum, Function, GlobalType, Struct, Variable};
-
-#[cfg(test)]
-mod tests;
+use tokenize::{Enum, Function, GlobalType, Keywords, Struct, Variable};
+use utils::{is_camel_case, is_snake_case, GetName};
 
 trait AddToAnylizeResults {
   fn add(self, add_to: &mut AnylizeResults);
 }
 
-pub enum AnylizeWarning {}
+#[derive(Clone)]
+pub enum AnylizeWarning {
+  NameShouldBeCamelCase,
+  NameShouldBeSnakeCase,
+}
+
+impl Display for AnylizeWarning {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
+      Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
+    }
+  }
+}
 
 impl AddToAnylizeResults for AnylizeWarning {
   fn add(self, add_to: &mut AnylizeResults) {
@@ -23,6 +39,7 @@ impl AddToAnylizeResults for AnylizeWarning {
 pub enum AnylizeError {
   NoName,
   NameAlreadyExists,
+  KeywordAsName,
 }
 
 impl Display for AnylizeError {
@@ -30,6 +47,7 @@ impl Display for AnylizeError {
     match self {
       Self::NoName => write!(f, "No name provided"),
       Self::NameAlreadyExists => write!(f, "Name already exsits"),
+      Self::KeywordAsName => write!(f, "Using a language keyword as name"),
     }
   }
 }
@@ -64,6 +82,7 @@ impl AnylizeResults {
   }
 }
 
+#[derive(Clone)]
 pub struct AnilizedTokens {
   file_name: Option<String>,
   pub functions: HashMap<String, Function>,
@@ -102,19 +121,21 @@ pub fn anilize_tokens(tokenizer: &Tokenizer) -> (AnilizedTokens, AnylizeResults)
 
   let file_name = tokenizer.get_file_name();
 
-  let (functions, mut functions_res) = array_into_hash_map(tokenizer.functions.clone());
+  let (functions, mut functions_res) =
+    array_into_hash_map(tokenizer.functions.clone(), SnakeOrCamel::Snake);
   anilized_res.merge(&mut functions_res);
 
-  let (vars, mut vars_res) = array_into_hash_map(tokenizer.vars.clone());
+  let (vars, mut vars_res) = array_into_hash_map(tokenizer.vars.clone(), SnakeOrCamel::Snake);
   anilized_res.merge(&mut vars_res);
 
-  let (structs, mut structs_res) = array_into_hash_map(tokenizer.structs.clone());
+  let (structs, mut structs_res) =
+    array_into_hash_map(tokenizer.structs.clone(), SnakeOrCamel::Camel);
   anilized_res.merge(&mut structs_res);
 
-  let (enums, mut enums_res) = array_into_hash_map(tokenizer.enums.clone());
+  let (enums, mut enums_res) = array_into_hash_map(tokenizer.enums.clone(), SnakeOrCamel::Camel);
   anilized_res.merge(&mut enums_res);
 
-  let (types, mut types_res) = array_into_hash_map(tokenizer.types.clone());
+  let (types, mut types_res) = array_into_hash_map(tokenizer.types.clone(), SnakeOrCamel::Camel);
   anilized_res.merge(&mut types_res);
 
   let res = AnilizedTokens {
@@ -128,7 +149,15 @@ pub fn anilize_tokens(tokenizer: &Tokenizer) -> (AnilizedTokens, AnylizeResults)
   (res, anilized_res)
 }
 
-fn array_into_hash_map<T>(data: Vec<T>) -> (HashMap<String, T>, AnylizeResults)
+enum SnakeOrCamel {
+  Snake,
+  Camel,
+}
+
+fn array_into_hash_map<T>(
+  data: Vec<T>,
+  name_should_be: SnakeOrCamel,
+) -> (HashMap<String, T>, AnylizeResults)
 where
   T: GetName,
 {
@@ -147,13 +176,26 @@ where
       continue;
     }
 
+    if Keywords::is_keyword(&name) {
+      anilized_res.add(AnylizeError::KeywordAsName);
+      continue;
+    }
+
+    if let SnakeOrCamel::Snake = name_should_be {
+      if !is_snake_case(&name) {
+        anilized_res.add(AnylizeWarning::NameShouldBeSnakeCase);
+        continue;
+      }
+    } else {
+      if !is_camel_case(&name) {
+        anilized_res.add(AnylizeWarning::NameShouldBeCamelCase);
+        continue;
+      }
+    }
+
     res.insert(name, item);
   }
   (res, anilized_res)
-}
-
-trait GetName {
-  fn name(&self) -> Option<String>;
 }
 
 impl GetName for Function {

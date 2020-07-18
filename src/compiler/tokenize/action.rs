@@ -2,7 +2,6 @@ use super::*;
 use actions::ParseActions;
 use errors::{LocationError, TokenizeError};
 use numbers::NumberTypes;
-use statics::Keywords;
 use statics::{valid_name_char, NameBuilder};
 use strings::parse_static_str;
 use variable::parse_var;

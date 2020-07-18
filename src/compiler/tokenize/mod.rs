@@ -16,6 +16,7 @@ pub use actions::Actions;
 pub use function::Function;
 pub use globals::{DataType, Tokenizer};
 pub use numbers::Number;
+pub use statics::Keywords;
 pub use strings::String_;
 pub use types::{Enum, GlobalType, Struct, Type};
 pub use variable::{VarType, Variable};

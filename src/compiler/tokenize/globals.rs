@@ -2,7 +2,6 @@ use super::*;
 use errors::{IOError, LocationError, StateError, TokenizeError};
 use files::CodeLocation;
 use function::ParseFunction;
-use statics::Keywords;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -128,11 +127,7 @@ impl Tokenizer {
   {
     if only_file_name {
       return Err(LocationError {
-        location: CodeLocation {
-          file_name: self.file_name.clone(),
-          y: None,
-          x: None,
-        },
+        location: CodeLocation::only_file_name(self.file_name.clone()),
         error_type: error.into(),
         prev_line: None,
         line: None,

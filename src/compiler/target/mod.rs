@@ -10,6 +10,7 @@ pub use tokenize::{
   Struct, VarType, Variable,
 };
 
+#[derive(Clone)]
 pub enum Lang {
   JS,
 }

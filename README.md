@@ -24,22 +24,16 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Name parsing `string`, `foo`, `bar123`, `int`, `i8`
         * [x]  Extending types parsing  or `[]string`
         * [x]  Inline types
-          * [x] structs `struct{}`
-          * [x] arrays `[]string`
-          * [x] enums `enum{}`
-        * [x] global types
-          * [x] structs `struct foo {}`
-          * [x] enums `enum foo {}`
-          * [x] custom types `type foo = []bar`
-      * [x]  Actions
+        * [x]  arrays `[]string`
+        * [x]  structs `struct foo {}` & `struct {}`
+        * [x]  enums `enum foo {}` & `enum {}`
+        * [x]  custom types `type foo = []bar``
+      * [ ]  Actions
         * [x]  Variables
-          * [x]  Keyword and name `let a`, `const a`
-          * [x]  Variable type `let a: string`
-          * [x]  assignment `let foo = "bar"` or `let foo = bar()`
         * [x]  Function
           * [x]  default `foo()`
           * [x]  arguments `foo(bar, "baz")`
-        * [x]  Static actions
+        * [ ]  Static actions
           * [x]  `return`
           * [x]  `loop {}`
           * [x]  `while true {}`
@@ -52,32 +46,29 @@ This roadmap is used to track the progress on the project. If you add a feature 
             * [ ] `match foo { }`
             * [ ] `match foo { _ => {} }`
             * [ ] `match foo { bar => {} _ => {} }`
-      * [ ] Importing
-        * [ ] Detecting to import someting
-        * [ ] Validating imports
-        * [ ] Detect import cycles
-        * [ ] Propper debugging
-          * [ ] Error messages show file origin
+      * [ ]  Importing
+        * [ ]  Detecting to import someting
+        * [ ]  Validating imports
+        * [ ]  Detect import cycles
+        * [ ]  Proper debugging
+          * [ ]  Error messages show file origin
 
    * Parsing stage 2 verifying the data and making it more accessible
 
-      * [x] Functions
-        * [x] Name
-          * [x] Error on Duplicates
-          * [ ] Error on invalid name useage like fn, enum, struct
-          * [ ] Warn on wrong name
-      * [x] Enums, Structs, Global Types
-        * [x] Name
-          * [x] Error on Duplicates
-          * [ ] Error on invalid name useage like fn, enum, struct
-          * [ ] Warn on wrong name
-      * [ ] Validate type names
-        * [ ] Duplicates
-        * [ ] Reference to variable must exsist
-      * [ ] List of actions
-        * [ ] Make it impossible to set variable without using it
-        * [ ] No duplicated variable names
-        * [ ] No variable references that do not exsists
+      * [x]  Output
+        * [x]  Error logging
+        * [x]  Warning logging
+      * [x]  Functions
+        * [x]  Name
+      * [x]  Enums, Structs, Global Types
+        * [x]  Name
+      * [ ]  Validate type names
+        * [ ]  Duplicates
+        * [ ]  Reference to variable must exist
+      * [ ]  List of actions
+        * [ ]  Make it impossible to set variable without using it
+        * [ ]  No duplicated variable names
+        * [ ]  No variable references that do not exist
 
    * Documentation
 

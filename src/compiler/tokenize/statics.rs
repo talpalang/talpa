@@ -74,6 +74,17 @@ pub enum Keywords {
   Continue,
 }
 
+impl Keywords {
+  pub fn is_keyword(word: &str) -> bool {
+    let lower_word = word.to_lowercase();
+    let words = [
+      "fn", "let", "for", "loop", "type", "enum", "const", "while", "break", "struct", "return",
+      "continue",
+    ];
+    words.contains(&lower_word.as_str())
+  }
+}
+
 impl MatchString for Keywords {
   fn get_string(&self) -> &'static str {
     match self {

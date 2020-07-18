@@ -30,7 +30,4 @@ Unsure where you can make a contribution? You can start by browsing the `good fi
 
 ### Pull Requests
 
-Please follow the steps below when submitting a pull request. 
-
-1. Follow the instructions in the template. 
-2. After you submit your pull request, verify that all status checks are passing.
+After you submit your pull request, please verify that all status checks are passing.

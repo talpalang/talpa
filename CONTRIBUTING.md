@@ -24,8 +24,8 @@ Before suggesting an enhancement, please check the current [issue](https://githu
 
 Unsure where you can make a contribution? You can start by browsing the `good first issues` and `help wanted` issues. 
 
-- [good first issues](https://github.com/TheOtterlord/SemanticBumper/labels/good%20first%20issue) - These issues are great for beginners and should only require a small amount of code.
-- [help wanted](https://github.com/TheOtterlord/SemanticBumper/labels/help%20wanted) - These issues are generally more complex and may require a larger amount of code. 
+- [good first issues](https://github.com/talpalang/talpa/labels/good%20first%20issue) - These issues are great for beginners and should only require a small amount of code.
+- [help wanted](https://github.com/talpalang/talpa/labels/help%20wanted) - These issues are generally more complex and may require a larger amount of code. 
 
 
 ### Pull Requests

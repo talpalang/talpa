@@ -330,7 +330,7 @@ impl Tokenizer {
 
                 return Some(meta)
               }
-              None => panic!("An error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
+              None => panic!("A critical error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
             }
           }
           _ => {}

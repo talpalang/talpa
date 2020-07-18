@@ -1,150 +1,160 @@
 use super::*;
 
-pub struct JavaScript {
-  pub src: String,
-}
+pub struct JavaScript {}
 
 impl JavaScript {
   // Generate javascript code using tokens from parser
-  pub fn generate(t: AnilizedTokens) -> Result<Self, LocationError> {
-    let mut code = Self { src: String::new() };
+  pub fn generate(lb: &mut LangBuilder, t: AnilizedTokens) -> Result<(), LocationError> {
+    let mut code = Self {};
+
     // define functions
     for (_, func) in t.functions {
-      let function = code.function(func);
-      code.src += &function;
+      code.function(func, lb);
     }
     for (_, glob) in t.vars {
-      let global = code.global(glob);
-      code.src += &global;
+      code.global_var(glob, lb);
     }
+
     // Because JS does not call main, we must do that here
-    code.src += "main();\n";
-    Ok(code)
+    lb.code("main();");
+    Ok(())
   }
-  pub fn function(&mut self, func: Function) -> String {
-    let mut src = String::new();
-    src += &format!("function {}( ", func.name.unwrap());
-    for arg in func.args {
-      src += &arg.0;
-      src += ",";
+  pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
+    let mut prefix_str = format!("function {}(", func.name.unwrap());
+    let mut args = vec![];
+    for (name, _) in func.args {
+      args.push(name);
     }
-    src.pop();
-    src += ") {\n";
-    let actions = func.body.list;
-    for action in actions {
-      src += &self.action(action);
+    prefix_str += &args.join(", ");
+    prefix_str += ")";
+    // prefix looks somwthing like this here
+    // function foo(a, b, c)
+
+    let mut actions = Block::new();
+    for action in func.body.list {
+      self.action(action, &mut actions, false);
     }
-    src += "}\n";
-    return src;
+
+    lb.function(Inline::from_str(prefix_str), actions);
   }
-  pub fn global(&mut self, var: Variable) -> String {
-    let mut src = String::new();
-    match var.var_type {
-      VarType::Const => {
-        src += "const ";
-      }
-      _ => { /* Add error */ }
-    }
-    src += &format!(
-      "{name} = {action};\n",
-      name = &var.name.to_string(),
-      action = &self.action(*var.action)
-    );
-    return src;
+  pub fn global_var(&mut self, var: Variable, lb: &mut impl BuildItems) {
+    let mut inline = Inline::new();
+
+    inline.code(format!("const {} = ", var.name.to_string()));
+    self.action(*var.action, &mut inline, true);
+    inline.code(";");
+
+    lb.inline(inline);
   }
-  pub fn action(&mut self, action: Action) -> String {
+  pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {
     // match an action and return code
-    let mut src = String::new();
-    let action_code = match action {
-      Action::Assigment(res) => res.name+" == "+&self.action(*res.action),
-      Action::Break => "break;\n".to_string(),
-      Action::Continue => "continue;\n".to_string(),
-      Action::For(res) => self.action_for(res),
-      Action::FunctionCall(res) => self.action_func_call(res),
-      Action::Loop(res) => self.action_loop(res),
-      Action::Return(res) => self.action_return(res),
-      Action::StaticNumber(res) => self.action_num(res),
-      Action::StaticString(res) => self.action_str(res),
-      Action::Variable(res) => self.action_var(res),
-      Action::VarRef(res) => res,
-      Action::While(res) => self.action_while(res),
-    };
-    src += &action_code;
-    return src;
-  }
-  pub fn action_for(&mut self, action: ActionFor) -> String {
-    let mut src = String::new();
-    src += &format!(
-      "for ({name} in {iter}) {{\n",
-      name = &action.item_name,
-      iter = &self.action(*action.list)
-    );
-    for act in action.actions.list {
-      src += &self.action(act);
-    }
-    src += "}\n";
-    return src;
-  }
-  pub fn action_func_call(&mut self, action: ActionFunctionCall) -> String {
-    let mut src = String::new();
-    src += &action.name;
-    src += "(";
-    for arg in action.arguments {
-      src += &self.action(arg);
-      src += ",";
-    }
-    src.pop();
-    src += ");\n";
-    return src;
-  }
-  pub fn action_loop(&mut self, action: Actions) -> String {
-    let mut src = String::new();
-    src += "while (true) {\n";
-    for act in action.list {
-      src += &self.action(act);
-    }
-    src += "}\n";
-    return src;
-  }
-  pub fn action_return(&mut self, action: Option<Box<Action>>) -> String {
-    let mut src = String::new();
-    src += "return ";
-    src += &self.action(*action.unwrap());
-    src += ";\n";
-    return src;
-  }
-  pub fn action_num(&mut self, action: Number) -> String {
     match action {
-      Number::Float(res) => return res.to_string(),
-      Number::Int(res) => return res.to_string(),
-    }
+      Action::Assigment(res) if inline => {
+        lb.code(res.name + " = ");
+        self.action(*res.action, lb, true);
+      }
+      Action::Assigment(res) => {
+        let mut inline = Inline::from_str(res.name + " = ");
+        self.action(*res.action, &mut inline, true);
+      }
+      Action::Break => lb.code(if inline { "break" } else { "break;" }),
+      Action::Continue => lb.code(if inline { "continue" } else { "continue;" }),
+      Action::For(res) => self.action_for(res, lb),
+      Action::FunctionCall(res) => self.action_func_call(res, lb, inline),
+      Action::Loop(res) => self.action_loop(res, lb),
+      Action::Return(res) => self.action_return(res, lb),
+      Action::StaticNumber(res) => self.action_num(res, lb),
+      Action::StaticString(res) => self.action_str(res, lb),
+      Action::Variable(res) => self.action_var(res, lb),
+      Action::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
+      Action::While(res) => self.action_while(res, lb),
+    };
   }
-  pub fn action_str(&mut self, action: String_) -> String {
-    let mut src = String::new();
-    src += "\"";
-    src += &action.content;
-    src += "\"";
-    return src;
-  }
-  pub fn action_var(&mut self, action: Variable) -> String {
-    let mut src = String::new();
-    match action.var_type {
-      VarType::Const => src += "const ",
-      VarType::Let => src += "let ",
+  pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
+    let mut prefix = Inline::from_str(format!("for ({name} in ", name = &action.item_name,));
+    self.action(*action.list, &mut prefix, true);
+    prefix.code(")");
+
+    let mut actions = Block::new();
+    for action in action.actions.list {
+      self.action(action, &mut actions, false);
     }
-    src += &action.name;
-    src += " = ";
-    src += &self.action(*action.action);
-    src += ";\n";
-    return src;
+
+    lb.function(prefix, actions);
   }
-  pub fn action_while(&mut self, action: tokenize::ActionWhile) -> String {
-    let mut src = String::new();
-    src += &format!("while ({}) {{\n", self.action(*action.true_value));
-    for act in action.actions.list {
-      src += &self.action(act);
+  pub fn action_func_call(
+    &mut self,
+    action: ActionFunctionCall,
+    lb: &mut impl BuildItems,
+    inline: bool,
+  ) {
+    let mut src = Inline::from_str(action.name + "(");
+
+    for (i, arg) in action.arguments.iter().enumerate() {
+      if i != 0 {
+        src.code(",");
+      }
+      self.action(arg.clone(), &mut src, true);
     }
-    src += "}\n";
-    return src;
+
+    src.code(if inline { ")" } else { ");" });
+
+    lb.inline(src);
+  }
+  pub fn action_loop(&mut self, action: Actions, lb: &mut impl BuildItems) {
+    let prefix = Inline::from_str("while (true)");
+
+    let mut contents = Block::new();
+    for act in action.list {
+      self.action(act, &mut contents, false);
+    }
+
+    lb.function(prefix, contents);
+  }
+  pub fn action_return(&mut self, action: Option<Box<Action>>, lb: &mut impl BuildItems) {
+    let mut src = Inline::from_str("return ");
+
+    self.action(*action.unwrap(), &mut src, true);
+    src.code(";");
+
+    lb.inline(src);
+  }
+  pub fn action_num(&mut self, action: Number, lb: &mut impl BuildItems) {
+    lb.code(match action {
+      Number::Float(res) => res.to_string(),
+      Number::Int(res) => res.to_string(),
+    });
+  }
+  pub fn action_str(&mut self, action: String_, lb: &mut impl BuildItems) {
+    lb.code(format!("\"{}\"", action.content));
+  }
+  pub fn action_var(&mut self, action: Variable, lb: &mut impl BuildItems) {
+    let prefix = format!(
+      "{var_type} {var_name} = ",
+      var_type = if let VarType::Const = action.var_type {
+        "const"
+      } else {
+        "let"
+      },
+      var_name = action.name
+    );
+    let mut src = Inline::from_str(prefix);
+
+    self.action(*action.action, &mut src, true);
+    src.code(";");
+
+    lb.inline(src);
+  }
+  pub fn action_while(&mut self, action: tokenize::ActionWhile, lb: &mut impl BuildItems) {
+    let mut prefix = Inline::from_str("while (");
+    self.action(*action.true_value, &mut prefix, true);
+    prefix.code(")");
+
+    let mut contents = Block::new();
+    for action in action.actions.list {
+      self.action(action, &mut contents, false);
+    }
+
+    lb.function(prefix, contents);
   }
 }

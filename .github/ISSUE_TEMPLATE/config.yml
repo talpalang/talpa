@@ -1,0 +1,4 @@
+contact_links:
+  - name: Contributing Guide
+    url: https://github.com/talpalang/talpa/blob/master/CONTRIBUTING.md
+    about: Not sure where to start? Check out our contributing guidelines

@@ -1,5 +1,9 @@
 # Talpa *a General Programming Language*
 
+[![Rust](https://github.com/talpalang/talpa/workflows/Rust/badge.svg)](https://github.com/talpalang/talpa/actions)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](code_of_conduct.md)
+[![GitHub](https://img.shields.io/github/license/talpalang/talpa)](https://choosealicense.com/licenses/mit/)
+
 > A WIP programming language designed to be compiled into many other languages.
 > For more information, see the [OSI issue](https://github.com/open-source-ideas/open-source-ideas/issues/235).
 

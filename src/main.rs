@@ -55,8 +55,8 @@ fn main() {
     }
 
     if cli.warnings == 0 {
-        println!("Successfull compiled code");
+        println!("Successfully compiled code");
     } else {
-        println!("Successfull compiled code with {} warnings", cli.warnings);
+        println!("Successfully compiled code with {} warnings", cli.warnings);
     }
 }

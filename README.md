@@ -60,7 +60,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Name
       * [ ]  Validate type names
         * [ ]  Duplicates
-        * [ ]  Reference to variable must exsist
+        * [ ]  Reference to variable must exist
       * [ ]  List of actions
         * [ ]  Make it impossible to set variable without using it
         * [ ]  No duplicated variable names

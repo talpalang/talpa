@@ -1,13 +1,29 @@
 use super::*;
 use actions::ParseActions;
 use errors::{LocationError, TokenizeError};
+use files::CodeLocation;
 use numbers::NumberTypes;
 use statics::{valid_name_char, NameBuilder};
 use strings::parse_static_str;
 use variable::parse_var;
 
 #[derive(Debug, Clone)]
-pub enum Action {
+pub struct Action {
+  pub location: CodeLocation,
+  pub type_: ActionType,
+}
+
+impl Action {
+  fn here(t: &mut Tokenizer, type_: ActionType) -> Self {
+    Self {
+      location: t.last_index_location(),
+      type_,
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub enum ActionType {
   Variable(Variable),
   Return(Option<Box<Action>>),
   Assigment(ActionAssigment),
@@ -28,9 +44,9 @@ pub struct ActionAssigment {
   pub action: Box<Action>,
 }
 
-impl Into<Action> for ActionAssigment {
-  fn into(self) -> Action {
-    Action::Assigment(self)
+impl Into<ActionType> for ActionAssigment {
+  fn into(self) -> ActionType {
+    ActionType::Assigment(self)
   }
 }
 
@@ -40,9 +56,9 @@ pub struct ActionFunctionCall {
   pub arguments: Vec<Action>,
 }
 
-impl Into<Action> for ActionFunctionCall {
-  fn into(self) -> Action {
-    Action::FunctionCall(self)
+impl Into<ActionType> for ActionFunctionCall {
+  fn into(self) -> ActionType {
+    ActionType::FunctionCall(self)
   }
 }
 
@@ -143,9 +159,9 @@ pub struct ActionWhile {
   pub true_value: Box<Action>,
 }
 
-impl Into<Action> for ActionWhile {
-  fn into(self) -> Action {
-    Action::While(self)
+impl Into<ActionType> for ActionWhile {
+  fn into(self) -> ActionType {
+    ActionType::While(self)
   }
 }
 
@@ -156,9 +172,9 @@ pub struct ActionFor {
   pub item_name: String,
 }
 
-impl Into<Action> for ActionFor {
-  fn into(self) -> Action {
-    Action::For(self)
+impl Into<ActionType> for ActionFor {
+  fn into(self) -> ActionType {
+    ActionType::For(self)
   }
 }
 
@@ -184,13 +200,13 @@ impl<'a> ParseAction<'a> {
     }
   }
   fn commit_state(&mut self, state: impl Into<ParseActionState>) -> Result<(), LocationError> {
-    self.res = Some(match state.into() {
+    let type_: ActionType = match state.into() {
       ParseActionState::Return(meta) => {
         let mut return_action: Option<Box<Action>> = None;
         if let Some(action) = meta.action {
           return_action = Some(Box::new(action));
         }
-        Action::Return(return_action)
+        ActionType::Return(return_action)
       }
       ParseActionState::Assigment(meta) => {
         if let None = meta.action {
@@ -210,13 +226,16 @@ impl<'a> ParseAction<'a> {
         arguments: meta.arguments,
       }
       .into(),
-      ParseActionState::VarRef(name) => Action::VarRef(name),
-      ParseActionState::Break => Action::Break,
-      ParseActionState::Continue => Action::Continue,
+      ParseActionState::VarRef(name) => ActionType::VarRef(name),
+      ParseActionState::Break => ActionType::Break,
+      ParseActionState::Continue => ActionType::Continue,
       ParseActionState::While(meta) => meta.into(),
       ParseActionState::For(meta) => meta.into(),
-      ParseActionState::Loop(actions) => Action::Loop(actions),
-    });
+      ParseActionState::Loop(actions) => ActionType::Loop(actions),
+    };
+
+    self.res = Some(Action::here(self.t, type_));
+
     Ok(())
   }
 
@@ -247,7 +266,7 @@ impl<'a> ParseAction<'a> {
             VarType::Let
           };
           let new_var = parse_var(self.t, Some(var_type))?;
-          self.res = Some(new_var.into());
+          self.res = Some(Action::here(self.t, new_var.into()));
         }
         Keywords::Return => {
           // Go to parsing the return
@@ -287,7 +306,7 @@ impl<'a> ParseAction<'a> {
         '"' if name.len() == 0 => {
           // Parse a static string
           let parsed = parse_static_str(self.t)?;
-          self.res = Some(parsed.into());
+          self.res = Some(Action::here(self.t, parsed.into()));
           return Ok(());
         }
         ' ' | '\t' | '\n' => {
@@ -327,7 +346,7 @@ impl<'a> ParseAction<'a> {
     if let Some(number_parser) = name.is_number(self.t) {
       // The defined name is actually a number
       let number = number_parser.result(NumberTypes::Auto)?;
-      self.res = Some(number.into());
+      self.res = Some(Action::here(self.t, number.into()));
       return Ok(());
     }
 

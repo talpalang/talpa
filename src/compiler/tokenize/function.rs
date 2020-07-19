@@ -1,11 +1,13 @@
 use super::*;
 use actions::ParseActions;
 use errors::{LocationError, TokenizeError};
+use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
 use types::parse_type;
 
 #[derive(Debug, Clone)]
 pub struct Function {
+  pub location: CodeLocation,
   pub name: Option<String>,
   pub args: Vec<(String, Type)>,
   pub res: Option<Type>,
@@ -13,6 +15,8 @@ pub struct Function {
 }
 
 pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, LocationError> {
+  let location = t.last_index_location();
+
   // Parse the function name
   let mut name_builder: Option<NameBuilder> = None;
   loop {
@@ -112,6 +116,7 @@ pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, Lo
   let body = ParseActions::start(t)?;
 
   Ok(Function {
+    location,
     name,
     args,
     res,

@@ -1,6 +1,7 @@
 use super::*;
 use action::{ActionToExpect, ParseAction};
 use errors::LocationError;
+use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
 use types::parse_type;
 
@@ -16,11 +17,12 @@ pub struct Variable {
   pub data_type: Option<Type>,
   pub name: String,
   pub action: Box<Action>,
+  pub location: CodeLocation,
 }
 
-impl Into<Action> for Variable {
-  fn into(self) -> Action {
-    Action::Variable(self)
+impl Into<ActionType> for Variable {
+  fn into(self) -> ActionType {
+    ActionType::Variable(self)
   }
 }
 
@@ -28,6 +30,7 @@ pub fn parse_var<'a>(
   t: &'a mut Tokenizer,
   var_type_option: Option<VarType>,
 ) -> Result<Variable, LocationError> {
+  let location = t.last_index_location();
   let mut name = NameBuilder::new();
   let mut data_type: Option<Type> = None;
 
@@ -79,6 +82,7 @@ pub fn parse_var<'a>(
   let action = ParseAction::start(t, false, ActionToExpect::Assignment(""))?;
 
   Ok(Variable {
+    location,
     var_type,
     data_type,
     name: name.to_string(t)?,

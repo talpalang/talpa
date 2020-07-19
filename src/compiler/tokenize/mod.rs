@@ -11,11 +11,11 @@ pub mod variable;
 
 use super::errors;
 use super::files;
-pub use action::{Action, ActionAssigment, ActionFor, ActionFunctionCall, ActionWhile};
+pub use action::{Action, ActionAssigment, ActionFor, ActionFunctionCall, ActionType, ActionWhile};
 pub use actions::Actions;
 pub use function::Function;
 pub use globals::{DataType, Tokenizer};
-pub use numbers::Number;
+pub use numbers::{Number, NumberType};
 pub use statics::Keywords;
 pub use strings::String_;
 pub use types::{Enum, GlobalType, Struct, Type};

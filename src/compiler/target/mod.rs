@@ -6,8 +6,8 @@ pub use anylize::AnilizedTokens;
 pub use builder::{Block, BuildItems, Inline, LangBuilder};
 use javascript::JavaScript;
 pub use tokenize::{
-  Action, ActionFor, ActionFunctionCall, Actions, Enum, Function, GlobalType, Number, String_,
-  Struct, VarType, Variable,
+  Action, ActionFor, ActionFunctionCall, ActionType, Actions, Enum, Function, GlobalType, Number,
+  NumberType, String_, Struct, VarType, Variable,
 };
 
 #[derive(Clone)]

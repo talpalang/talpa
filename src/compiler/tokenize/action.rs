@@ -387,7 +387,7 @@ impl<'a> ParseAction<'a> {
     }
 
     match self.t.must_next_while(" \t\n")? {
-      ')' => {} // This is what we exect. return no error
+      ')' => {} // This is what we expect. return no error
       c => return self.t.unexpected_char(c),
     }
 

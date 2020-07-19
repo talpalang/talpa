@@ -361,7 +361,7 @@ impl<'a> ParseAction<'a> {
 
     if check_for_function_open_sign {
       match self.t.must_next_char()? {
-        '(' => {} // This is what we exect. return no error
+        '(' => {} // This is what we expect. return no error
         c => return self.t.unexpected_char(c),
       }
     }

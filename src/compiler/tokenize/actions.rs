@@ -46,9 +46,7 @@ impl<'a> ParseActions<'a> {
             let action = ParseAction::start(self.t, true, ActionToExpect::ActionInBody)?;
             self.res.list.push(action);
 
-            if let None = self.t.next_while("\n\t ") {
-              return self.t.unexpected_eof();
-            }
+            self.t.must_next_while("\n\t ")?;
             self.t.index -= 1;
           }
           c => return self.t.unexpected_char(c),

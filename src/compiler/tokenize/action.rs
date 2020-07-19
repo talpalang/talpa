@@ -360,10 +360,9 @@ impl<'a> ParseAction<'a> {
     };
 
     if check_for_function_open_sign {
-      match self.t.next_char() {
-        Some('(') => {} // This is what we exect. return no error
-        Some(c) => return self.t.unexpected_char(c),
-        None => return self.t.unexpected_eof(),
+      match self.t.must_next_char()? {
+        '(' => {} // This is what we expect. return no error
+        c => return self.t.unexpected_char(c),
       }
     }
 
@@ -387,10 +386,9 @@ impl<'a> ParseAction<'a> {
       }
     }
 
-    match self.t.next_while(" \t\n") {
-      Some(')') => {} // This is what we exect. return no error
-      Some(c) => return self.t.unexpected_char(c),
-      None => return self.t.unexpected_eof(),
+    match self.t.must_next_while(" \t\n")? {
+      ')' => {} // This is what we expect. return no error
+      c => return self.t.unexpected_char(c),
     }
 
     Ok(res)
@@ -403,27 +401,20 @@ impl<'a> ParseAction<'a> {
     let mut res = ParseActionStateAssigment { name, action: None };
 
     if check_for_equal_sign {
-      match self.t.next_while(" \t\n") {
-        Some('=') => {}
-        Some(c) => return self.t.unexpected_char(c),
-        None => return self.t.unexpected_eof(),
+      match self.t.must_next_while(" \t\n")? {
+        '=' => {}
+        c => return self.t.unexpected_char(c),
       }
     }
 
-    match self.t.next_while(" \t\n") {
-      Some(_) => {
-        let action = ParseAction::start(self.t, true, ActionToExpect::Assignment(""))?;
-        res.action = Some(action);
-      }
-      None => return self.t.unexpected_eof(),
-    }
+    self.t.must_next_while(" \t\n")?;
+    let action = ParseAction::start(self.t, true, ActionToExpect::Assignment(""))?;
+    res.action = Some(action);
 
     Ok(res)
   }
   fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, LocationError> {
-    if let None = self.t.next_while(" \t\n") {
-      return self.t.unexpected_eof();
-    };
+    self.t.must_next_while(" \t\n")?;
 
     let mut for_item_name: Option<String> = None;
 
@@ -437,21 +428,17 @@ impl<'a> ParseAction<'a> {
       LoopType::For => {
         let mut name = NameBuilder::new();
         loop {
-          let c = self.t.next_char();
-          match c {
-            Some(' ') | Some('\t') | Some('\n') => break,
-            Some(c) if valid_name_char(c) => name.push(c),
-            Some(c) => return self.t.unexpected_char(c),
-            None => return self.t.unexpected_eof(),
+          match self.t.must_next_char()? {
+            ' ' | '\t' | '\n' => break,
+            c if valid_name_char(c) => name.push(c),
+            c => return self.t.unexpected_char(c),
           }
         }
 
         for_item_name = Some(name.to_string(self.t)?);
         self.t.expect("in")?;
 
-        if let None = self.t.next_while(" \t\n") {
-          return self.t.unexpected_eof();
-        }
+        self.t.must_next_while(" \t\n")?;
 
         Some(ParseAction::start(
           self.t,
@@ -465,10 +452,9 @@ impl<'a> ParseAction<'a> {
       }
     };
 
-    match self.t.next_while(" \t\n") {
-      Some('{') => {}
-      Some(c) => return self.t.unexpected_char(c),
-      None => return self.t.unexpected_eof(),
+    match self.t.must_next_while(" \t\n")? {
+      '{' => {}
+      c => return self.t.unexpected_char(c),
     };
 
     let actions = ParseActions::start(self.t)?;
@@ -489,13 +475,12 @@ impl<'a> ParseAction<'a> {
   fn parse_return(&mut self) -> Result<ParseActionStateReturn, LocationError> {
     let mut res = ParseActionStateReturn { action: None };
 
-    match self.t.next_while(" \t\n") {
-      Some('}') => {}
-      Some(_) => {
+    match self.t.must_next_while(" \t\n")? {
+      '}' => {}
+      _ => {
         let action = ParseAction::start(self.t, true, ActionToExpect::Assignment("}"))?;
         res.action = Some(action);
       }
-      None => return self.t.unexpected_eof(),
     }
     Ok(res)
   }

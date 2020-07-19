@@ -19,14 +19,14 @@ pub fn parse_static_str<'a>(t: &'a mut Tokenizer) -> Result<String_, LocationErr
   let mut string_content: Vec<u8> = vec![];
 
   let mut escaped = false;
-  while let Some(c) = t.next_char() {
-    match c {
+  loop {
+    match t.must_next_char()? {
       '\\' if !escaped => escaped = true,
       '"' if !escaped => {
         res.content = String::from_utf8(string_content).unwrap();
         return Ok(res);
       }
-      _ => {
+      c => {
         string_content.push(c as u8);
         if escaped {
           escaped = false;
@@ -34,6 +34,4 @@ pub fn parse_static_str<'a>(t: &'a mut Tokenizer) -> Result<String_, LocationErr
       }
     }
   }
-
-  t.unexpected_eof()
 }

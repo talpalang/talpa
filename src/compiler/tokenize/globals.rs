@@ -1,7 +1,7 @@
 use super::*;
 use errors::{IOError, LocationError, StateError, TokenizeError};
 use files::CodeLocation;
-use function::ParseFunction;
+use function::parse_function;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
@@ -220,6 +220,14 @@ impl Tokenizer {
     return *self.contents.get(self.index - 1).unwrap() as char;
   }
 
+  pub fn must_next_char(&mut self) -> Result<char, LocationError> {
+    if let Some(c) = self.next_char() {
+      Ok(c)
+    } else {
+      self.unexpected_eof()
+    }
+  }
+
   pub fn next_char(&mut self) -> Option<char> {
     let letter = *self.contents.get(self.index)? as char;
     self.index += 1;
@@ -265,6 +273,14 @@ impl Tokenizer {
   fn seek_next_char(&mut self) -> Option<char> {
     let letter = self.contents.get(self.index)?;
     Some(*letter as char)
+  }
+
+  pub fn must_next_while(&mut self, chars: &'static str) -> Result<char, LocationError> {
+    if let Some(c) = self.next_while(chars) {
+      Ok(c)
+    } else {
+      self.unexpected_eof()
+    }
   }
 
   pub fn next_while(&mut self, chars: &'static str) -> Option<char> {
@@ -362,7 +378,7 @@ impl Tokenizer {
           self.vars.push(parsed_variable);
         }
         Some(Keywords::Fn) => {
-          let parsed_function = ParseFunction::start(self)?;
+          let parsed_function = parse_function(self, false)?;
           self.functions.push(parsed_function);
         }
         Some(Keywords::Struct) => {
@@ -379,11 +395,8 @@ impl Tokenizer {
         }
         _ => {
           // could be newline/tab/whitespace
-          return if let Some(c) = self.next_char() {
-            self.unexpected_char(c)
-          } else {
-            self.unexpected_eof()
-          };
+          let c = self.must_next_char()?;
+          return self.unexpected_char(c);
         }
       }
     }

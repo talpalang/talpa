@@ -48,39 +48,31 @@ pub fn parse_var<'a>(
   };
 
   // Parse name
-  let mut next_char = t.next_while(" \t\n");
+  let mut next_char = t.must_next_while(" \t\n")?;
   loop {
-    if let Some(c) = next_char {
-      match c {
-        _ if valid_name_char(c) => name.push(c),
-        ' ' | '\t' | '\n' => break,
-        ':' | '=' => {
-          t.index -= 1;
-          break;
-        }
-        c => return t.unexpected_char(c),
+    match next_char {
+      c if valid_name_char(c) => name.push(c),
+      ' ' | '\t' | '\n' => break,
+      ':' | '=' => {
+        t.index -= 1;
+        break;
       }
-    } else {
-      return t.unexpected_eof();
+      c => return t.unexpected_char(c),
     }
-    next_char = t.next_char();
+    next_char = t.must_next_char()?;
   }
 
   // Parse the variable type if set
-  next_char = t.next_while(" \t\n");
-  if let None = next_char {
-    return t.unexpected_eof();
-  }
-  if next_char.unwrap() == ':' {
+  next_char = t.must_next_while(" \t\n")?;
+  if next_char == ':' {
     data_type = Some(parse_type(t, true)?);
-    next_char = t.next_while(" \t\n");
+    next_char = t.must_next_while(" \t\n")?;
   }
 
   // Check for the = symbol
   match next_char {
-    Some('=') => {}
-    Some(c) => return t.unexpected_char(c),
-    None => return t.unexpected_eof(),
+    '=' => {}
+    c => return t.unexpected_char(c),
   }
 
   // Parse the action after the action after the =

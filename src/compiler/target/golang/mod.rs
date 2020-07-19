@@ -68,7 +68,7 @@ impl Go {
       Action::Break => lb.code("break"),
       Action::Continue => lb.code("continue"),
       Action::For(res) => self.action_for(res, lb),
-      Action::FunctionCall(res) => self.action_func_call(res, lb, inline),
+      Action::FunctionCall(res) => self.action_func_call(res, lb),
       Action::Loop(res) => self.action_loop(res, lb),
       Action::Return(res) => self.action_return(res, lb),
       Action::StaticNumber(res) => self.action_num(res, lb),
@@ -96,7 +96,6 @@ impl Go {
     &mut self,
     action: ActionFunctionCall,
     lb: &mut impl BuildItems,
-    inline: bool,
   ) {
     let mut src = Inline::from_str(action.name + "(");
 

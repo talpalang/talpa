@@ -119,7 +119,7 @@ pub fn parse_type<'a>(t: &'a mut Tokenizer, go_back_one: bool) -> Result<Type, L
     t.index -= 1;
   }
 
-  t.must_next_while(" \t\n")?;
+  t.must_next_while_empty()?;
   t.index -= 1;
 
   match t.try_match(vec![
@@ -198,7 +198,7 @@ pub struct GlobalType {
 
 pub fn parse_global_type<'a>(t: &'a mut Tokenizer) -> Result<GlobalType, LocationError> {
   // Parse the global type name
-  let first_name_char = match t.must_next_while(" \t\n")? {
+  let first_name_char = match t.must_next_while_empty()? {
     '{' => {
       return t.error(TokenizeError::Custom(
         "Struct requires name for example: \"struct foo {}\"",
@@ -263,7 +263,7 @@ pub fn parse_enum<'a>(
     }
   } else {
     // Parse the enum name
-    let first_name_char = match t.must_next_while(" \t\n")? {
+    let first_name_char = match t.must_next_while_empty()? {
       '{' => {
         return t.error(TokenizeError::Custom(
           "Struct requires name for example: \"struct foo {}\"",
@@ -294,7 +294,7 @@ pub fn parse_enum<'a>(
   // Parse the enum fields
   loop {
     // Parse field name
-    let first_name_char = match t.must_next_while(" \t\n")? {
+    let first_name_char = match t.must_next_while_empty()? {
       '}' => break, // end of enum
       c if !valid_name_char(c) => return t.unexpected_char(c),
       c => c,
@@ -374,7 +374,7 @@ pub fn parse_struct<'a>(
     }
   } else {
     // Parse the struct name
-    let first_name_char = match t.must_next_while(" \t\n")? {
+    let first_name_char = match t.must_next_while_empty()? {
       '{' => {
         return t.error(TokenizeError::Custom(
           "Struct requires name for example: \"struct foo {}\"",
@@ -404,7 +404,7 @@ pub fn parse_struct<'a>(
   // Parse struct fields
   loop {
     // Parse field name
-    let first_name_char = match t.must_next_while(" \t\n")? {
+    let first_name_char = match t.must_next_while_empty()? {
       '}' => break, // end of struct
       c if !valid_name_char(c) => return t.unexpected_char(c),
       c => c,

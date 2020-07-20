@@ -51,7 +51,7 @@ pub fn parse_var<'a>(
   };
 
   // Parse name
-  let mut next_char = t.must_next_while(" \t\n")?;
+  let mut next_char = t.must_next_while_empty()?;
   loop {
     match next_char {
       c if valid_name_char(c) => name.push(c),
@@ -66,10 +66,10 @@ pub fn parse_var<'a>(
   }
 
   // Parse the variable type if set
-  next_char = t.must_next_while(" \t\n")?;
+  next_char = t.must_next_while_empty()?;
   if next_char == ':' {
     data_type = Some(parse_type(t, true)?);
-    next_char = t.must_next_while(" \t\n")?;
+    next_char = t.must_next_while_empty()?;
   }
 
   // Check for the = symbol

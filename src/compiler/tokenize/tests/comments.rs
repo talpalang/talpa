@@ -40,9 +40,12 @@ fn test_comments_inside_of_function() {
   parse_str(
     r#"
       fn foo() {
+        // One line comments work !
         /*
           Multi-line comment.
           Can contain / and * and even /*
+          or close the function
+      }
         */
       }
     "#,

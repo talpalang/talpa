@@ -1,5 +1,5 @@
 use super::*;
-use actions::ParseActions;
+use actions::parse_actions;
 use errors::{LocationError, TokenizeError};
 use files::CodeLocation;
 use numbers::NumberTypes;
@@ -36,6 +36,11 @@ pub enum ActionType {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
+  If(
+    (Box<Action>, Actions),
+    Vec<(Action, Actions)>,
+    Option<Actions>,
+  ),
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +83,7 @@ pub enum ParseActionState {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
+  If((Action, Actions), Vec<(Action, Actions)>, Option<Actions>),
 }
 
 pub struct ParseActionStateFunctionCall {
@@ -226,6 +232,9 @@ impl<'a> ParseAction<'a> {
         arguments: meta.arguments,
       }
       .into(),
+      ParseActionState::If(if_, else_ifs, else_) => {
+        ActionType::If((Box::new(if_.0), if_.1), else_ifs, else_)
+      }
       ParseActionState::VarRef(name) => ActionType::VarRef(name),
       ParseActionState::Break => ActionType::Break,
       ParseActionState::Continue => ActionType::Continue,
@@ -249,6 +258,8 @@ impl<'a> ParseAction<'a> {
         &Keywords::While,
         &Keywords::For,
         &Keywords::Break,
+        &Keywords::Continue,
+        &Keywords::If,
       ])
     } else {
       // Matching keywords is only allowed when inside the body
@@ -280,7 +291,12 @@ impl<'a> ParseAction<'a> {
         }
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
-        Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type => {
+        Keywords::If => {
+          // Parse if statement
+          let to_commit = self.parse_if()?;
+          self.commit_state(to_commit)?;
+        }
+        Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type | Keywords::Else => {
           return self.t.error(TokenizeError::UnexpectedResult)
         }
       }
@@ -405,7 +421,7 @@ impl<'a> ParseAction<'a> {
       }
     }
 
-    match self.t.must_next_while(" \t\n")? {
+    match self.t.must_next_while_empty()? {
       ')' => {} // This is what we expect. return no error
       c => return self.t.unexpected_char(c),
     }
@@ -420,20 +436,88 @@ impl<'a> ParseAction<'a> {
     let mut res = ParseActionStateAssigment { name, action: None };
 
     if check_for_equal_sign {
-      match self.t.must_next_while(" \t\n")? {
+      match self.t.must_next_while_empty()? {
         '=' => {}
         c => return self.t.unexpected_char(c),
       }
     }
 
-    self.t.must_next_while(" \t\n")?;
+    self.t.must_next_while_empty()?;
     let action = ParseAction::start(self.t, true, ActionToExpect::Assignment(""))?;
     res.action = Some(action);
 
     Ok(res)
   }
+  fn parse_if(&mut self) -> Result<ParseActionState, LocationError> {
+    self.t.must_next_while_empty()?;
+
+    let if_ = parse_if_check_and_body(self.t)?;
+
+    // Parse the else if(s) and check if we need to parse the last else
+    let mut else_ifs: Vec<(Action, Actions)> = vec![];
+    let mut must_parse_else = false;
+    loop {
+      // Check for else
+      let mut c = self.t.must_next_while_empty()?;
+      if c != 'e' {
+        self.t.index -= 1;
+        break;
+      }
+      c = self.t.must_next_char()?;
+      if c != 'l' {
+        self.t.index -= 2;
+        break;
+      }
+      c = self.t.must_next_char()?;
+      if c != 's' {
+        self.t.index -= 3;
+        break;
+      }
+      c = self.t.must_next_char()?;
+      if c != 'e' {
+        self.t.index -= 4;
+        break;
+      }
+      c = self.t.must_next_char()?;
+      match c {
+        '{' => {
+          must_parse_else = true;
+          break;
+        }
+        ' ' | '\t' | '\n' => {}
+        _ => {
+          self.t.index -= 5;
+          break;
+        }
+      }
+
+      c = self.t.must_next_while_empty()?;
+      if c == '{' {
+        must_parse_else = true;
+        break;
+      }
+      if c != 'i' {
+        return self.t.unexpected_char(c);
+      }
+      c = self.t.must_next_char()?;
+      if c != 'f' {
+        return self.t.unexpected_char(c);
+      }
+
+      let else_if = parse_if_check_and_body(self.t)?;
+      else_ifs.push(else_if);
+    }
+
+    let else_ = if must_parse_else {
+      Some(parse_actions(self.t)?)
+    } else {
+      None
+    };
+
+    Ok(ParseActionState::If(if_, else_ifs, else_))
+  }
   fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, LocationError> {
-    self.t.must_next_while(" \t\n")?;
+    self.t.must_next_while_empty()?;
 
     let mut for_item_name: Option<String> = None;
 
@@ -458,7 +542,7 @@ impl<'a> ParseAction<'a> {
         for_item_name = Some(name.to_string(self.t)?);
         self.t.expect("in")?;
 
-        self.t.must_next_while(" \t\n")?;
+        self.t.must_next_while_empty()?;
 
         Some(ParseAction::start(
           self.t,
@@ -472,12 +556,12 @@ impl<'a> ParseAction<'a> {
       }
     };
 
-    match self.t.must_next_while(" \t\n")? {
+    match self.t.must_next_while_empty()? {
       '{' => {}
       c => return self.t.unexpected_char(c),
     };
 
-    let actions = ParseActions::start(self.t)?;
+    let actions = parse_actions(self.t)?;
 
     Ok(match loop_type {
       LoopType::For => ParseActionState::For(ActionFor {
@@ -495,7 +579,7 @@ impl<'a> ParseAction<'a> {
   fn parse_return(&mut self) -> Result<ParseActionStateReturn, LocationError> {
     let mut res = ParseActionStateReturn { action: None };
 
-    match self.t.must_next_while(" \t\n")? {
+    match self.t.must_next_while_empty()? {
       '}' => {}
       _ => {
         let action = ParseAction::start(self.t, true, ActionToExpect::Assignment("}"))?;
@@ -504,4 +588,18 @@ impl<'a> ParseAction<'a> {
     }
     Ok(res)
   }
+}
+
+fn parse_if_check_and_body(t: &mut Tokenizer) -> Result<(Action, Actions), LocationError> {
+  t.must_next_while_empty()?;
+
+  let if_assignment = ParseAction::start(t, true, ActionToExpect::Assignment("{"))?;
+
+  let c = t.must_next_while_empty()?;
+  if '{' != c {
+    return t.unexpected_char(c);
+  }
+
+  let body = parse_actions(t)?;
+  Ok((if_assignment, body))
 }

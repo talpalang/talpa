@@ -342,26 +342,29 @@ impl Tokenizer {
       '*' => {
         // detected multi-line comment
         loop {
-          self.index += 1;
           match *self.contents.get(self.index)? as char {
             '\n' => {
               self.last_line_x = self.xy.1;
               self.xy = (0, self.last_line_x + 1);
+              self.index += 1;
             }
             '*' => {
               self.xy.0 += 1;
+              self.index += 1;
 
               // * detected
-              let last = *self.contents.get(self.index)? as char;
-              if last == '/' {
+              if let Some(b'/') = self.contents.get(self.index) {
                 // */ detected
-                self.index += 1;
                 self.xy.0 += 1;
+                self.index += 1;
 
                 return self.next_char();
               }
             }
-            _ => self.xy.0 += 1,
+            _ => {
+              self.xy.0 += 1;
+              self.index += 1;
+            }
           }
         }
       }
@@ -376,6 +379,14 @@ impl Tokenizer {
 
   pub fn must_next_while(&mut self, chars: &'static str) -> Result<char, LocationError> {
     if let Some(c) = self.next_while(chars) {
+      Ok(c)
+    } else {
+      self.unexpected_eof()
+    }
+  }
+
+  pub fn must_next_while_empty(&mut self) -> Result<char, LocationError> {
+    if let Some(c) = self.next_while(" \t\n") {
       Ok(c)
     } else {
       self.unexpected_eof()

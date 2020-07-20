@@ -445,6 +445,7 @@ impl<'a> ParseAction<'a> {
         ActionToExpect::Assignment("{"),
       )?),
       LoopType::For => {
+        self.t.index -= 1;
         let mut name = NameBuilder::new();
         loop {
           match self.t.must_next_char()? {

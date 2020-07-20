@@ -48,26 +48,26 @@ impl JavaScript {
   }
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {
     // match an action and return code
-    match action {
-      Action::Assigment(res) if inline => {
+    match action.type_ {
+      ActionType::Assigment(res) if inline => {
         lb.code(res.name + " = ");
         self.action(*res.action, lb, true);
       }
-      Action::Assigment(res) => {
+      ActionType::Assigment(res) => {
         let mut inline = Inline::from_str(res.name + " = ");
         self.action(*res.action, &mut inline, true);
       }
-      Action::Break => lb.code(if inline { "break" } else { "break;" }),
-      Action::Continue => lb.code(if inline { "continue" } else { "continue;" }),
-      Action::For(res) => self.action_for(res, lb),
-      Action::FunctionCall(res) => self.action_func_call(res, lb, inline),
-      Action::Loop(res) => self.action_loop(res, lb),
-      Action::Return(res) => self.action_return(res, lb),
-      Action::StaticNumber(res) => self.action_num(res, lb),
-      Action::StaticString(res) => self.action_str(res, lb),
-      Action::Variable(res) => self.action_var(res, lb),
-      Action::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
-      Action::While(res) => self.action_while(res, lb),
+      ActionType::Break => lb.code(if inline { "break" } else { "break;" }),
+      ActionType::Continue => lb.code(if inline { "continue" } else { "continue;" }),
+      ActionType::For(res) => self.action_for(res, lb),
+      ActionType::FunctionCall(res) => self.action_func_call(res, lb, inline),
+      ActionType::Loop(res) => self.action_loop(res, lb),
+      ActionType::Return(res) => self.action_return(res, lb),
+      ActionType::StaticNumber(res) => self.action_num(res, lb),
+      ActionType::StaticString(res) => self.action_str(res, lb),
+      ActionType::Variable(res) => self.action_var(res, lb),
+      ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
+      ActionType::While(res) => self.action_while(res, lb),
     };
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
@@ -119,10 +119,10 @@ impl JavaScript {
 
     lb.inline(src);
   }
-  pub fn action_num(&mut self, action: Number, lb: &mut impl BuildItems) {
-    lb.code(match action {
-      Number::Float(res) => res.to_string(),
-      Number::Int(res) => res.to_string(),
+  pub fn action_num(&mut self, number: Number, lb: &mut impl BuildItems) {
+    lb.code(match number.type_ {
+      NumberType::Float(res) => res.to_string(),
+      NumberType::Int(res) => res.to_string(),
     });
   }
   pub fn action_str(&mut self, action: String_, lb: &mut impl BuildItems) {

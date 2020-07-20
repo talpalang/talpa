@@ -69,3 +69,25 @@ fn test_advanced_global_type_4() {
     "#,
   );
 }
+
+#[test]
+fn test_wired_global_type_1() {
+  parse_str(
+    r#"
+      type foo =
+      string
+    "#,
+  );
+}
+
+#[test]
+fn test_wired_global_type_2() {
+  parse_str(
+    r#"
+      type
+        foo
+          =
+            string
+    "#,
+  );
+}

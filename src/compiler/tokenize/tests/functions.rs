@@ -85,3 +85,29 @@ fn test_function_call_with_args() {
     "#,
   );
 }
+
+#[test]
+fn test_wired_function_1() {
+  parse_str(
+    r#"
+      fn
+      foo
+      (
+        a int,
+        b int,
+      )
+      {
+
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_wired_function_2() {
+  parse_str(
+    r#"
+      fn  bar  (   )   {    }
+    "#,
+  );
+}

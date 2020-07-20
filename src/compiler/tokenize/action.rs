@@ -456,7 +456,7 @@ impl<'a> ParseAction<'a> {
         }
 
         for_item_name = Some(name.to_string(self.t)?);
-        self.t.expect("in")?;
+        self.t.expect("in", Some(" \t\n"))?;
 
         self.t.must_next_while(" \t\n")?;
 

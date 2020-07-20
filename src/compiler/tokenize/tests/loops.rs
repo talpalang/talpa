@@ -24,6 +24,35 @@ fn test_multiple_simple_fors() {
 }
 
 #[test]
+fn test_simple_for_names() {
+  let tokens = parse_str(
+    r#"
+      fn test(items []string) {
+        for item in items {}
+      }
+    "#
+  );
+  match &tokens.functions[0].body.list[0].type_ {
+    action::ActionType::For(res) => {
+      if res.item_name != "item" {
+        panic!("{:?}", tokens);
+      }
+      let list = &res.actions.list;
+      if list.len() != 0 {
+        panic!("{:?}", tokens);
+      }
+      match &res.list.type_ {
+        action::ActionType::VarRef(name) if name == "items" => {},
+        _ => {
+          panic!("{:?}", tokens);
+        }
+      }
+    },
+    _ => panic!("{:?}", tokens)
+  }
+}
+
+#[test]
 fn test_for_incorrect_args_1() {
   parse_str_fail(
     r#"

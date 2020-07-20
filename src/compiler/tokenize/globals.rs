@@ -14,6 +14,8 @@ pub struct Tokenizer {
   contents: Vec<u8>,
   file_name: Option<String>,
   pub index: usize,
+  pub last_line_x: usize, // Only set if going to
+  pub xy: (usize, usize),
   pub functions: Vec<Function>,
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
@@ -61,6 +63,8 @@ impl Tokenizer {
   pub fn tokenize(contents: DataType) -> Result<Self, LocationError> {
     let mut tokenizer = Self {
       index: 0,
+      xy: (0, 0),
+      last_line_x: 0,
       contents: vec![],
       functions: vec![],
       vars: vec![],
@@ -116,18 +120,19 @@ impl Tokenizer {
     self.error(TokenizeError::UnexpectedEOF)
   }
 
-  pub fn custom_error<T, Y>(
+  pub fn custom_error<T>(
     &self,
-    error: Y,
+    error: impl Into<StateError>,
     file_char_number: Option<usize>,
     only_file_name: bool,
-  ) -> Result<T, LocationError>
-  where
-    Y: Into<StateError>,
-  {
+  ) -> Result<T, LocationError> {
     if only_file_name {
       return Err(LocationError {
-        location: CodeLocation::only_file_name(self.file_name.clone()),
+        location: if let Some(name) = self.file_name.clone() {
+          CodeLocation::only_file_name(name)
+        } else {
+          CodeLocation::empty()
+        },
         error_type: error.into(),
         prev_line: None,
         line: None,
@@ -135,78 +140,150 @@ impl Tokenizer {
       });
     }
 
-    let use_index = if let Some(index) = file_char_number {
-      index
+    let (prev_line, line, next_line, x, y) = if let Some(use_index) = file_char_number {
+      let mut y = 1;
+      let mut x = 0;
+      let mut prev_line_bytes: Option<Vec<u8>> = None;
+      let mut current_line = vec![];
+
+      for (index, letter) in self.contents.iter().enumerate() {
+        if index == use_index {
+          break;
+        }
+        match *letter as char {
+          '\n' => {
+            prev_line_bytes = Some(current_line);
+            current_line = vec![];
+            y += 1;
+            x = 0;
+          }
+          '\r' => {} // Ignore this char
+          letter_char => {
+            current_line.push(*letter);
+            x += if letter_char == '\t' { 2 } else { 1 };
+          }
+        }
+      }
+
+      let mut prev_line = None;
+      if let Some(line_data) = prev_line_bytes {
+        prev_line = Some(String::from_utf8(line_data).unwrap())
+      }
+
+      let mut next_line_bytes: Option<Vec<u8>> = None;
+      let iterrator = self.contents.iter().skip(use_index);
+      for letter in iterrator {
+        match *letter as char {
+          '\n' => {
+            if let Some(_) = next_line_bytes {
+              break;
+            }
+            next_line_bytes = Some(vec![]);
+          }
+          _ => {
+            if let Some(mut line) = next_line_bytes {
+              line.push(*letter);
+              next_line_bytes = Some(line);
+            } else {
+              current_line.push(*letter);
+            }
+          }
+        }
+      }
+
+      let next_line = if let Some(bytes) = next_line_bytes {
+        Some(String::from_utf8(bytes).unwrap())
+      } else {
+        None
+      };
+
+      (
+        prev_line,
+        String::from_utf8(current_line).unwrap(),
+        next_line,
+        x,
+        y,
+      )
     } else {
-      self.index - 1
-    };
-    let mut line_number = 1;
-    let mut current_line_position = 1;
-    let mut prev_line_bytes: Option<Vec<u8>> = None;
-    let mut current_line = vec![];
+      let (use_index, x, y) = self.last_index();
 
-    for (index, letter) in self.contents.iter().enumerate() {
-      if index == use_index {
-        break;
-      }
-      match *letter as char {
-        '\n' => {
-          prev_line_bytes = Some(current_line);
-          current_line = vec![];
-          line_number += 1;
-          current_line_position = 0;
-        }
-        '\r' => {} // Ignore this char
-        letter_char => {
-          current_line.push(*letter);
-          current_line_position += if letter_char == '\t' { 2 } else { 1 };
-        }
-      }
-    }
+      let mut line: Vec<u8> = vec![];
 
-    let mut prev_line = None;
-    if let Some(line_data) = prev_line_bytes {
-      prev_line = Some(String::from_utf8(line_data).unwrap())
-    }
-
-    let mut next_line_bytes: Option<Vec<u8>> = None;
-    let iterrator = self.contents.iter().skip(use_index);
-    for letter in iterrator {
-      match *letter as char {
-        '\n' => {
-          if let Some(_) = next_line_bytes {
+      let mut prev_line_index = use_index;
+      while prev_line_index > 0 {
+        match *self.contents.get(prev_line_index).unwrap() {
+          b'\n' => {
+            prev_line_index -= 1;
             break;
           }
-          next_line_bytes = Some(vec![]);
-        }
-        '\r' => {} // Ignore this char
-        _ => {
-          if let Some(mut line) = next_line_bytes {
-            line.push(*letter);
-            next_line_bytes = Some(line);
-          } else {
-            current_line.push(*letter);
+          c => {
+            prev_line_index -= 1;
+            line.insert(0, c);
           }
         }
       }
-    }
 
-    let next_line = if let Some(bytes) = next_line_bytes {
-      Some(String::from_utf8(bytes).unwrap())
-    } else {
-      None
+      let mut next_line_index = use_index;
+      while self.contents.len() > next_line_index {
+        match *self.contents.get(prev_line_index).unwrap() {
+          b'\n' => {
+            next_line_index += 1;
+            break;
+          }
+          c => {
+            next_line_index += 1;
+            line.push(c);
+          }
+        }
+      }
+
+      let prev_line: Option<String> = if use_index > x {
+        // Get the previouse line
+        let mut prev_line: Vec<u8> = vec![];
+        while prev_line_index > 0 {
+          match self.contents.get(prev_line_index) {
+            Some(b'\n') => break,
+            None => break,
+            Some(c) => prev_line.insert(0, *c),
+          }
+          prev_line_index -= 1;
+        }
+
+        Some(String::from_utf8(prev_line).unwrap())
+      } else {
+        None
+      };
+
+      let next_line: Option<String> = if self.contents.len() > next_line_index {
+        // Get the next line
+        let mut next_line: Vec<u8> = vec![];
+        while next_line_index > 0 {
+          match self.contents.get(next_line_index) {
+            Some(b'\n') => break,
+            None => break,
+            Some(c) => next_line.push(*c),
+          }
+          next_line_index += 1;
+        }
+
+        Some(String::from_utf8(next_line).unwrap())
+      } else {
+        None
+      };
+
+      (prev_line, String::from_utf8(line).unwrap(), next_line, x, y)
     };
 
     Err(LocationError {
       location: CodeLocation {
         file_name: self.file_name.clone(),
-        y: Some(line_number),
-        x: Some(current_line_position),
+        y: Some(y),
+        x: Some(x),
       },
       error_type: error.into(),
       prev_line,
-      line: Some(String::from_utf8(current_line).unwrap()),
-      next_line: next_line,
+      line: Some(line),
+      next_line,
     })
   }
 
@@ -230,7 +307,14 @@ impl Tokenizer {
 
   pub fn next_char(&mut self) -> Option<char> {
     let letter = *self.contents.get(self.index)? as char;
+
     self.index += 1;
+    if letter == '\n' {
+      self.last_line_x = self.xy.1;
+      self.xy = (0, self.last_line_x + 1);
+    } else {
+      self.xy.0 += 1;
+    }
 
     // check for the start of a comment
     if letter != '/' {
@@ -244,25 +328,40 @@ impl Tokenizer {
         loop {
           let next = *self.contents.get(self.index)? as char;
           self.index += 1;
+
           // check for newline (end of comment)
           if next == '\n' {
+            self.last_line_x = self.xy.1;
+            self.xy = (0, self.last_line_x + 1);
             return self.next_char();
+          } else {
+            self.xy.0 += 1;
           }
         }
       }
       '*' => {
         // detected multi-line comment
         loop {
-          let next = *self.contents.get(self.index)? as char;
           self.index += 1;
-          if next == '*' {
-            // * detected
-            let last = *self.contents.get(self.index)? as char;
-            if last == '/' {
-              // */ detected
-              self.index += 1;
-              return self.next_char();
+          match *self.contents.get(self.index)? as char {
+            '\n' => {
+              self.last_line_x = self.xy.1;
+              self.xy = (0, self.last_line_x + 1);
             }
+            '*' => {
+              self.xy.0 += 1;
+
+              // * detected
+              let last = *self.contents.get(self.index)? as char;
+              if last == '/' {
+                // */ detected
+                self.index += 1;
+                self.xy.0 += 1;
+
+                return self.next_char();
+              }
+            }
+            _ => self.xy.0 += 1,
           }
         }
       }
@@ -416,6 +515,25 @@ impl Tokenizer {
 
   pub fn get_file_name(&self) -> Option<String> {
     self.file_name.clone()
+  }
+
+  /// This return the last location
+  /// return values: index, x, y
+  pub fn last_index(&self) -> (usize, usize, usize) {
+    let index = if self.index == 0 { 0 } else { self.index - 1 };
+
+    let (x, y) = if self.xy.0 == 0 {
+      (0, self.last_line_x)
+    } else {
+      (self.xy.0 - 1, self.xy.1)
+    };
+
+    (index, x, y)
+  }
+
+  pub fn last_index_location(&self) -> CodeLocation {
+    let (_, x, y) = self.last_index();
+    CodeLocation::only_location(x, y)
   }
 
   /*

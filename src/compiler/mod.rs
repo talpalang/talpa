@@ -78,7 +78,7 @@ impl Compiler {
 
     if c.options.debug {
       props.debug_formatted_tokens(
-        CodeLocation::only_file_name(Some(file_name.into())),
+        CodeLocation::only_file_name(file_name.into()),
         formatted_res.clone(),
       );
     }

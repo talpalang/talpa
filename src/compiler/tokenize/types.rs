@@ -1,12 +1,28 @@
 use super::*;
 use action::{ActionToExpect, ParseAction};
 use errors::{LocationError, TokenizeError};
+use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
 use std::collections::HashMap;
 use utils::MatchString;
 
 #[derive(Debug, Clone)]
-pub enum Type {
+pub struct Type {
+  location: CodeLocation,
+  type_: TypeType,
+}
+
+impl Type {
+  fn here(t: &mut Tokenizer, type_: TypeType) -> Self {
+    Self {
+      location: t.last_index_location(),
+      type_,
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeType {
   /// Intager compiles into the default intager type of the target language
   Int,
   /// 8 bit intager
@@ -57,20 +73,20 @@ pub enum DetectType {
 }
 
 impl DetectType {
-  fn to_type(&self) -> Option<Type> {
+  fn to_type(&self) -> Option<TypeType> {
     Some(match self {
-      Self::Int => Type::Int,
-      Self::I8 => Type::I8,
-      Self::I16 => Type::I16,
-      Self::I32 => Type::I32,
-      Self::I64 => Type::I64,
-      Self::UInt => Type::UInt,
-      Self::U8 => Type::U8,
-      Self::U16 => Type::U16,
-      Self::U32 => Type::U32,
-      Self::U64 => Type::U64,
-      Self::String => Type::String,
-      Self::Char => Type::Char,
+      Self::Int => TypeType::Int,
+      Self::I8 => TypeType::I8,
+      Self::I16 => TypeType::I16,
+      Self::I32 => TypeType::I32,
+      Self::I64 => TypeType::I64,
+      Self::UInt => TypeType::UInt,
+      Self::U8 => TypeType::U8,
+      Self::U16 => TypeType::U16,
+      Self::U32 => TypeType::U32,
+      Self::U64 => TypeType::U64,
+      Self::String => TypeType::String,
+      Self::Char => TypeType::Char,
       Self::Array | Self::Struct | Self::Enum => return None,
     })
   }
@@ -125,26 +141,33 @@ pub fn parse_type<'a>(t: &'a mut Tokenizer, go_back_one: bool) -> Result<Type, L
   ]) {
     Some(&DetectType::Array) => {
       let res = parse_type(t, false)?;
-      return Ok(Type::Array(Box::new(res)));
+      return Ok(Type::here(t, TypeType::Array(Box::new(res))));
     }
     Some(matched_type) => {
+      let mut return_value: Option<TypeType> = None;
+
       let add_to_substract = if let Some(c) = t.next_char() {
         if let &DetectType::Struct = matched_type {
           if c == '{' || c == ' ' || c == '\n' {
             let res = parse_struct(t, true, c == '{')?;
-            return Ok(Type::Struct(res));
+            return_value = Some(TypeType::Struct(res));
           }
         } else if let &DetectType::Enum = matched_type {
           if c == '{' || c == ' ' || c == '\n' {
             let res = parse_enum(t, true, c == '{')?;
-            return Ok(Type::Enum(res));
+            return_value = Some(TypeType::Enum(res));
           }
         } else if !valid_name_char(c) {
           if let Some(v) = matched_type.to_type() {
             t.index -= 1;
-            return Ok(v);
+            return_value = Some(v);
           }
         }
+
+        if let Some(type_) = return_value {
+          return Ok(Type::here(t, type_));
+        }
+
         1
       } else {
         0
@@ -161,7 +184,7 @@ pub fn parse_type<'a>(t: &'a mut Tokenizer, go_back_one: bool) -> Result<Type, L
       _ => {
         t.index -= 1;
         let type_string = type_name.to_string(t)?;
-        return Ok(Type::TypeRef(type_string));
+        return Ok(Type::here(t, TypeType::TypeRef(type_string)));
       }
     }
   }

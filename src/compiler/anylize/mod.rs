@@ -22,10 +22,14 @@ pub enum AnylizeWarning {
 
 impl Display for AnylizeWarning {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
-      Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
-    }
+    write!(
+      f,
+      "Name should be in {}",
+      match self {
+        Self::NameShouldBeCamelCase => "camel case",
+        Self::NameShouldBeSnakeCase => "snake case",
+      }
+    )
   }
 }
 

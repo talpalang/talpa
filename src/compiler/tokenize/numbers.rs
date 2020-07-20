@@ -1,8 +1,15 @@
 use super::*;
 use errors::{LocationError, TokenizeError};
+use files::CodeLocation;
 
 #[derive(Debug, Clone)]
-pub enum Number {
+pub struct Number {
+  pub type_: NumberType,
+  pub location: CodeLocation,
+}
+
+#[derive(Debug, Clone)]
+pub enum NumberType {
   /// This matches the default int number type of the programming language,
   /// Note that the size of this value might differ over multiple languages
   Int(i64),
@@ -19,32 +26,38 @@ pub enum NumberTypes {
   // Float,
 }
 
-impl Into<Action> for Number {
-  fn into(self) -> Action {
-    Action::StaticNumber(self)
+impl Into<ActionType> for Number {
+  fn into(self) -> ActionType {
+    ActionType::StaticNumber(self)
   }
 }
 
 pub struct NumberParser<'a> {
   t: &'a mut Tokenizer,
   buff: Vec<u8>,
+  location: CodeLocation,
 }
 
 impl<'a> NumberParser<'a> {
   pub fn new_without_starting(t: &'a mut Tokenizer, buff: Vec<u8>) -> Self {
-    Self { t, buff }
+    let location = t.last_index_location();
+    Self { t, buff, location }
   }
   pub fn result(&self, type_: NumberTypes) -> Result<Number, LocationError> {
-    Ok(match type_ {
+    let type_ = match type_ {
       // NumberTypes::Float => Number::Float(self.to_float()?),
       // NumberTypes::Int => Number::Int(self.to_int()?),
       NumberTypes::Auto => {
         if self.buff.contains(&('.' as u8)) {
-          Number::Float(self.to_float()?)
+          NumberType::Float(self.to_float()?)
         } else {
-          Number::Int(self.to_int()?)
+          NumberType::Int(self.to_int()?)
         }
       }
+    };
+    Ok(Number {
+      type_,
+      location: self.location.clone(),
     })
   }
   fn to_float(&self) -> Result<f64, LocationError> {

@@ -43,7 +43,7 @@ impl LocationError {
         }
 
         let mut spacing = String::from("");
-        for _ in 0..x + y.to_string().len() + format!("{}", y).len() + 1 {
+        for _ in 0..x + y.to_string().len() + 1 {
           spacing += " ";
         }
         output.push(format!(

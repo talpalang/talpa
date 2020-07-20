@@ -19,13 +19,25 @@ impl Go {
   }
   pub fn get_type(&mut self, type_: Option<tokenize::types::Type>) -> String {
     match type_ {
-      Some(tokenize::types::Type::Char) => "string".to_string(),
-      Some(tokenize::types::Type::String) => "string".to_string(),
-      Some(tokenize::types::Type::Int) => "int".to_string(),
-      Some(tokenize::types::Type::TypeRef(res)) => res,
-      None => "".to_string(),
-      _ => "/* Not yet implemented */".to_string()
+      Some(res) => {
+        match res.type_ {
+          tokenize::types::TypeType::Char => "string".to_string(),
+          tokenize::types::TypeType::String => "string".to_string(),
+          tokenize::types::TypeType::Int => "int".to_string(),
+          tokenize::types::TypeType::TypeRef(res) => res,
+          _ => "/* Not yet implemented */".to_string()
+        }
+      },
+      None => "".to_string()
     }
+    // match Some(type_.unwrap().type_) {
+    //   Some(tokenize::types::TypeType::Char) => "string".to_string(),
+    //   Some(tokenize::types::TypeType::String) => "string".to_string(),
+    //   Some(tokenize::types::TypeType::Int) => "int".to_string(),
+    //   Some(tokenize::types::TypeType::TypeRef(res)) => res,
+    //   None => "".to_string(),
+    //   _ => "/* Not yet implemented */".to_string()
+    // }
   }
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
     let mut prefix_str = format!("func {}(", func.name.unwrap());
@@ -56,26 +68,26 @@ impl Go {
   }
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {
     // match an action and return code
-    match action {
-      Action::Assigment(res) if inline => {
+    match action.type_ {
+      ActionType::Assigment(res) if inline => {
         lb.code(res.name + " = ");
         self.action(*res.action, lb, true);
       }
-      Action::Assigment(res) => {
+      ActionType::Assigment(res) => {
         let mut inline = Inline::from_str(res.name + " = ");
         self.action(*res.action, &mut inline, true);
       }
-      Action::Break => lb.code("break"),
-      Action::Continue => lb.code("continue"),
-      Action::For(res) => self.action_for(res, lb),
-      Action::FunctionCall(res) => self.action_func_call(res, lb),
-      Action::Loop(res) => self.action_loop(res, lb),
-      Action::Return(res) => self.action_return(res, lb),
-      Action::StaticNumber(res) => self.action_num(res, lb),
-      Action::StaticString(res) => self.action_str(res, lb),
-      Action::Variable(res) => self.action_var(res, lb),
-      Action::VarRef(res) => lb.code(res),
-      Action::While(res) => self.action_while(res, lb),
+      ActionType::Break => lb.code("break"),
+      ActionType::Continue => lb.code("continue"),
+      ActionType::For(res) => self.action_for(res, lb),
+      ActionType::FunctionCall(res) => self.action_func_call(res, lb),
+      ActionType::Loop(res) => self.action_loop(res, lb),
+      ActionType::Return(res) => self.action_return(res, lb),
+      ActionType::StaticNumber(res) => self.action_num(res, lb),
+      ActionType::StaticString(res) => self.action_str(res, lb),
+      ActionType::Variable(res) => self.action_var(res, lb),
+      ActionType::VarRef(res) => lb.code(res),
+      ActionType::While(res) => self.action_while(res, lb),
     };
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
@@ -128,9 +140,9 @@ impl Go {
     lb.inline(src);
   }
   pub fn action_num(&mut self, action: Number, lb: &mut impl BuildItems) {
-    lb.code(match action {
-      Number::Float(res) => res.to_string(),
-      Number::Int(res) => res.to_string(),
+    lb.code(match action.type_ {
+      NumberType::Float(res) => res.to_string(),
+      NumberType::Int(res) => res.to_string(),
     });
   }
   pub fn action_str(&mut self, action: String_, lb: &mut impl BuildItems) {

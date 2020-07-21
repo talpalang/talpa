@@ -68,8 +68,55 @@ impl JavaScript {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(_, _, _) => unimplemented!(), // TODO: make this
+      ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb), // TODO: make this
     };
+  }
+  fn if_block(
+    &mut self,
+    lb: &mut impl BuildItems,
+    body: Actions,
+    prefix: &'static str,
+    add_to_prefix: impl FnOnce(&mut Self, &mut Inline),
+  ) {
+    let mut prefix = Inline::from_str(prefix);
+    add_to_prefix(self, &mut prefix);
+    let mut actions = Block::new();
+    for action in body.list {
+      self.action(action, &mut actions, false);
+    }
+    lb.function(prefix, actions);
+  }
+  pub fn action_if(
+    &mut self,
+    if_: (
+      std::boxed::Box<tokenize::action::Action>,
+      tokenize::actions::Actions,
+    ),
+    else_ifs: std::vec::Vec<(tokenize::action::Action, tokenize::actions::Actions)>,
+    else_: std::option::Option<tokenize::actions::Actions>,
+    lb: &mut impl BuildItems,
+  ) {
+    // if
+    let segment = *if_.0;
+    let body = if_.1;
+    self.if_block(lb, body, "if (", |s, p| {
+      s.action(segment, p, true);
+      p.code(")");
+    });
+
+    // else if
+    for else_if in else_ifs {
+      self.if_block(lb, else_if.1.clone(), "else if (", |s, p| {
+        s.action(else_if.0.clone(), p, true);
+        p.code(")");
+      });
+    }
+
+    // else
+    match else_ {
+      Some(res) => self.if_block(lb, res, "else", |_, _| {}),
+      None => {}
+    }
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
     let mut prefix = Inline::from_str(format!("for ({name} in ", name = &action.item_name,));

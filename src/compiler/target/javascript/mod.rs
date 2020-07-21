@@ -71,6 +71,22 @@ impl JavaScript {
       ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb), // TODO: make this
     };
   }
+  pub fn if_block(
+    &mut self,
+    statement: tokenize::action::Action,
+    body: tokenize::actions::Actions,
+    lb: &mut impl BuildItems,
+    is_elif: bool,
+  ) {
+    let mut prefix = Inline::from_str(if is_elif {"else if ("} else {"if ("});
+    self.action(statement, &mut prefix, true);
+    prefix.code(")");
+    let mut actions = Block::new();
+    for action in body.list {
+      self.action(action, &mut actions, false);
+    }
+    lb.function(prefix, actions);
+  }
   pub fn action_if(
     &mut self, 
     if_: (std::boxed::Box<tokenize::action::Action>, tokenize::actions::Actions), 
@@ -80,25 +96,12 @@ impl JavaScript {
   ) {
     // if
     let statement = *if_.0;
-    let mut prefix = Inline::from_str("if (");
-    self.action(statement, &mut prefix, true);
-    prefix.code(")");
-    let mut actions = Block::new();
-    for action in if_.1.list {
-      self.action(action, &mut actions, false);
-    }
-    lb.function(prefix, actions);
+    let body = if_.1;
+    self.if_block(statement, body, lb, false);
 
     // else if
     let statement = else_if[0].0.clone();
-    let mut prefix = Inline::from_str("else if (");
-    self.action(statement, &mut prefix, true);
-    prefix.code(")");
-    let mut actions = Block::new();
-    for action in else_if[0].1.clone().list {
-      self.action(action, &mut actions, false);
-    }
-    lb.function(prefix, actions);
+    self.if_block(statement, else_if[0].1.clone(), lb, true);
 
     // else
     match else_ {

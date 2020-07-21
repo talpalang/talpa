@@ -88,6 +88,7 @@ impl JavaScript {
       self.action(action, &mut actions, false);
     }
     lb.function(prefix, actions);
+
     // else if
     let statement = else_if[0].0.clone();
     let mut prefix = Inline::from_str("else if (");

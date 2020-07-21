@@ -88,6 +88,7 @@ impl Go {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res),
       ActionType::While(res) => self.action_while(res, lb),
+      ActionType::If(_,_,_) => unimplemented!()
     };
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {

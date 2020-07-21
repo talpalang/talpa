@@ -4,8 +4,8 @@ use super::*;
 fn test_variable() {
   parse_str(
     r#"
-        const foo = "1234"
-    "#,
+                const foo = "1234"
+            "#,
   );
 }
 
@@ -13,8 +13,8 @@ fn test_variable() {
 fn test_variable_string_with_spaces() {
   parse_str(
     r#"
-        const foo = "Hello world!"
-    "#,
+                const foo = "Hello world!"
+            "#,
   );
 }
 
@@ -22,9 +22,9 @@ fn test_variable_string_with_spaces() {
 fn test_variable_strings_with_backslashes() {
   parse_str(
     r#"
-        const foo = "I like to say \"Hello World!\" in my code."
-        const bar = "This \\ backslash is displayed when printed!"
-    "#,
+                const foo = "I like to say \"Hello World!\" in my code."
+                const bar = "This \\ backslash is displayed when printed!"
+            "#,
   );
 }
 
@@ -32,8 +32,8 @@ fn test_variable_strings_with_backslashes() {
 fn test_variable_global_let_fails() {
   parse_str_fail(
     r#"
-        let foo = 0
-    "#,
+                let foo = 0
+            "#,
   );
 }
 
@@ -42,19 +42,7 @@ fn test_variable_starts_with_number_fails() {
   // variables should never start with a number
   parse_str_fail(
     r#"
-        const 1fail = 0
-    "#,
-  );
-}
-
-#[test]
-fn test_wired_variable() {
-  parse_str(
-    r#"
-        const
-        foo
-        =
-        "Hello world!"
-    "#,
+                const 1fail = 0
+            "#,
   );
 }

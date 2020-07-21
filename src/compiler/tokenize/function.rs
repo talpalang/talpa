@@ -23,9 +23,6 @@ pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, Lo
     match t.must_next_char()? {
       '\t' | '\n' | ' ' => {
         if let Some(_) = name_builder {
-          if '(' == t.must_next_while(" \t\n")? {
-            break;
-          }
           // Not a valid name char return error
           return t.error(TokenizeError::InvalidNameChar);
         }
@@ -48,7 +45,6 @@ pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, Lo
       }
     }
   }
-
   let name = if let Some(name) = name_builder {
     if anonymous {
       return t.error(TokenizeError::Custom("anonymous function with name"));

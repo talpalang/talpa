@@ -46,7 +46,6 @@ impl LocationError {
         for _ in 0..x + y.to_string().len() + 1 {
           spacing += " ";
         }
-
         output.push(format!(
           "{}: {}\n{}^-- {}",
           y,
@@ -67,7 +66,7 @@ impl LocationError {
       }
     }
 
-    format!("{}\n", output.join("\n"))
+    format!("{}", output.join("\n"))
   }
 }
 

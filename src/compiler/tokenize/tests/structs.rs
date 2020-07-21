@@ -101,17 +101,3 @@ fn test_invalid_struct_data() {
     "#,
   );
 }
-
-#[test]
-fn test_wired_struct() {
-  parse_str(
-    r#"
-      struct
-      foo
-      {
-        bar    string
-        baz    string
-      }
-    "#,
-  );
-}

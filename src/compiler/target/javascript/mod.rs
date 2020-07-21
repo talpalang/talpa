@@ -99,6 +99,7 @@ impl JavaScript {
       self.action(action, &mut actions, false);
     }
     lb.function(prefix, actions);
+
     // else
     match else_ {
       Some(res) => {

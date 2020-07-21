@@ -68,6 +68,7 @@ impl JavaScript {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
       ActionType::While(res) => self.action_while(res, lb),
+      ActionType::If(_, _, _) => unimplemented!(), // TODO: make this
     };
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {

@@ -38,10 +38,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
           * [x]  `loop {}`
           * [x]  `while true {}`
           * [x]  `for foo in bar {}`
-          * [ ] if
-            * [ ] `if foo {}`
-            * [ ] `if foo {} else {}`
-            * [ ] `if foo {} else if bar {} else {}`
+          * [x]  `if foo {} else if bar {} else {}`
           * [ ] match
             * [ ] `match foo { }`
             * [ ] `match foo { _ => {} }`

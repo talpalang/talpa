@@ -73,3 +73,28 @@ fn test_enum_with_multiple_fields() {
     "#,
   );
 }
+
+#[test]
+fn test_wired_enum_1() {
+  parse_str(
+    r#"
+      enum foo {
+        bar =
+        "bar"
+        baz =
+        "baz"
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_wired_enum_2() {
+  parse_str(
+    r#"
+      enum foo {bar
+
+        baz}
+    "#,
+  );
+}

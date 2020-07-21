@@ -3,8 +3,12 @@ use super::*;
 pub struct Go {}
 
 impl Go {
-  // Generate golang code using tokens from parser
+  /// Generate golang code using tokens from parser
   pub fn generate(lb: &mut LangBuilder, t: AnilizedTokens) -> Result<(), LocationError> {
+
+    // TODO: Replace when file importing is allowed
+    lb.code("package main");
+
     let mut code = Self {};
 
     // define functions
@@ -17,6 +21,7 @@ impl Go {
 
     Ok(())
   }
+  /// Get the type as a string
   pub fn get_type(&mut self, type_: Option<tokenize::types::Type>) -> String {
     match type_ {
       Some(res) => {

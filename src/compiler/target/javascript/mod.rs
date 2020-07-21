@@ -68,8 +68,49 @@ impl JavaScript {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(_, _, _) => unimplemented!(), // TODO: make this
+      ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb), // TODO: make this
     };
+  }
+  pub fn action_if(
+    &mut self, 
+    if_: (std::boxed::Box<tokenize::action::Action>, tokenize::actions::Actions), 
+    else_if: std::vec::Vec<(tokenize::action::Action, tokenize::actions::Actions)>,
+    else_: std::option::Option<tokenize::actions::Actions>,
+    lb: &mut impl BuildItems
+  ) {
+    // if
+    let statement = *if_.0;
+    let mut prefix = Inline::from_str("if (");
+    self.action(statement, &mut prefix, true);
+    prefix.code(")");
+    let mut actions = Block::new();
+    for action in if_.1.list {
+      self.action(action, &mut actions, false);
+    }
+    lb.function(prefix, actions);
+    // else if
+    let statement = else_if[0].0.clone();
+    let mut prefix = Inline::from_str("else if (");
+    self.action(statement, &mut prefix, true);
+    prefix.code(")");
+    let mut actions = Block::new();
+    for action in else_if[0].1.clone().list {
+      self.action(action, &mut actions, false);
+    }
+    lb.function(prefix, actions);
+    // else
+    match else_ {
+      Some(res) => {
+        let prefix = Inline::from_str("else");
+        let mut actions = Block::new();
+        for action in res.list {
+          self.action(action, &mut actions, false);
+        }
+        lb.function(prefix, actions);
+      },
+      None => {}
+    }
+
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
     let mut prefix = Inline::from_str(format!("for ({name} in ", name = &action.item_name,));

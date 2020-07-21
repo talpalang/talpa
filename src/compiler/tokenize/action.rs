@@ -593,6 +593,8 @@ impl<'a> ParseAction<'a> {
 fn parse_if_check_and_body(t: &mut Tokenizer) -> Result<(Action, Actions), LocationError> {
   t.must_next_while_empty()?;
 
+  t.index -= 1;
+
   let if_assignment = ParseAction::start(t, true, ActionToExpect::Assignment("{"))?;
 
   let c = t.must_next_while_empty()?;

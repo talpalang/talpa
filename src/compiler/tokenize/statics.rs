@@ -61,9 +61,11 @@ impl NameBuilder {
 #[derive(Clone, Copy)]
 pub enum Keywords {
   Fn,
+  If,
   Let,
   For,
   Loop,
+  Else,
   Enum,
   Type,
   Const,
@@ -79,7 +81,7 @@ impl Keywords {
     let lower_word = word.to_lowercase();
     let words = [
       "fn", "let", "for", "loop", "type", "enum", "const", "while", "break", "struct", "return",
-      "continue",
+      "continue", "if", "else",
     ];
     words.contains(&lower_word.as_str())
   }
@@ -88,10 +90,12 @@ impl Keywords {
 impl MatchString for Keywords {
   fn get_string(&self) -> &'static str {
     match self {
+      Self::If => "if",
       Self::Fn => "fn",
       Self::Let => "let",
       Self::For => "for",
       Self::Loop => "loop",
+      Self::Else => "else",
       Self::Type => "type",
       Self::Enum => "enum",
       Self::Const => "const",

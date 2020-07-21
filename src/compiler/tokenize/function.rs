@@ -1,5 +1,5 @@
 use super::*;
-use actions::ParseActions;
+use actions::parse_actions;
 use errors::{LocationError, TokenizeError};
 use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
@@ -91,7 +91,7 @@ pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, Lo
 
     let type_ = parse_type(t, false)?;
 
-    let break_after = match t.must_next_while("\t\n ")? {
+    let break_after = match t.must_next_while_empty()? {
       ')' => true,
       ',' => false,
       _ => return t.error(TokenizeError::InvalidNameChar),
@@ -105,15 +105,15 @@ pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, Lo
   }
 
   let mut res: Option<Type> = None;
-  if t.must_next_while(" \t\n")? != '{' {
+  if t.must_next_while_empty()? != '{' {
     res = Some(parse_type(t, true)?);
-    let c = t.must_next_while(" \t\n")?;
+    let c = t.must_next_while_empty()?;
     if c != '{' {
       return t.unexpected_char(c);
     }
   }
 
-  let body = ParseActions::start(t)?;
+  let body = parse_actions(t)?;
 
   Ok(Function {
     location,

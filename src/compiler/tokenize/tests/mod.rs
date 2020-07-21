@@ -3,6 +3,7 @@ mod enums;
 mod functions;
 mod general;
 mod global_types;
+mod ifs;
 mod loops;
 mod structs;
 mod variables;

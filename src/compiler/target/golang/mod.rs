@@ -30,20 +30,13 @@ impl Go {
           tokenize::types::TypeType::String => "string".to_string(),
           tokenize::types::TypeType::Int => "int".to_string(),
           tokenize::types::TypeType::TypeRef(res) => res,
-          _ => "/* Not yet implemented */".to_string()
+          _ => unimplemented!()
         }
       },
       None => "".to_string()
     }
-    // match Some(type_.unwrap().type_) {
-    //   Some(tokenize::types::TypeType::Char) => "string".to_string(),
-    //   Some(tokenize::types::TypeType::String) => "string".to_string(),
-    //   Some(tokenize::types::TypeType::Int) => "int".to_string(),
-    //   Some(tokenize::types::TypeType::TypeRef(res)) => res,
-    //   None => "".to_string(),
-    //   _ => "/* Not yet implemented */".to_string()
-    // }
   }
+  /// Parse a function
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
     let mut prefix_str = format!("func {}(", func.name.unwrap());
     let mut args = vec![];
@@ -63,6 +56,7 @@ impl Go {
 
     lb.function(Inline::from_str(prefix_str), actions);
   }
+  /// Parse a const variable
   pub fn global_var(&mut self, var: Variable, lb: &mut impl BuildItems) {
     let mut inline = Inline::new();
 
@@ -71,6 +65,7 @@ impl Go {
 
     lb.inline(inline);
   }
+  // Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {
     // match an action and return code
     match action.type_ {

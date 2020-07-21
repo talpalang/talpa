@@ -209,7 +209,7 @@ impl Tokenizer {
 
       let mut line: Vec<u8> = vec![];
 
-      let mut prev_line_index = use_index;
+      let mut prev_line_index = use_index - 1;
       while prev_line_index > 0 {
         match *self.contents.get(prev_line_index).unwrap() {
           b'\n' => {
@@ -225,7 +225,7 @@ impl Tokenizer {
 
       let mut next_line_index = use_index;
       while self.contents.len() > next_line_index {
-        match *self.contents.get(prev_line_index).unwrap() {
+        match *self.contents.get(next_line_index).unwrap() {
           b'\n' => {
             next_line_index += 1;
             break;
@@ -513,13 +513,23 @@ impl Tokenizer {
     Ok(())
   }
 
-  pub fn expect(&mut self, text: &str) -> Result<(), LocationError> {
+  pub fn expect(
+    &mut self,
+    text: &str,
+    before_while: Option<&'static str>,
+  ) -> Result<(), LocationError> {
+    let mut c = if let Some(chars) = before_while {
+      self.must_next_while(chars)?
+    } else {
+      self.must_next_char()?
+    };
+
     for letter in text.chars() {
-      match self.next_char() {
-        Some(v) if v == letter => {}
-        Some(c) => return self.unexpected_char(c),
-        None => return self.unexpected_eof(),
+      match c {
+        v if v == letter => {}
+        c => return self.unexpected_char(c),
       }
+      c = self.must_next_char()?;
     }
     Ok(())
   }
@@ -546,42 +556,4 @@ impl Tokenizer {
     let (_, x, y) = self.last_index();
     CodeLocation::only_location(x, y)
   }
-
-  /*
-      Functions written but not used so commented out
-  */
-
-  // pub fn match_name(&mut self) -> Result<(String, usize), ParsingError> {
-  //   let mut name = NameBuilder::new();
-
-  //   while let Some(c) = self.next_char() {
-  //     match c {
-  //       ' ' | '\t' | '\n' if name.len() == 0 => {} // Ignore this char
-  //       _ if legal_name_char(c) => name.push(c),
-  //       _ => break,
-  //     }
-  //   }
-
-  //   self.index -= 1;
-  //   let name_len = name.len();
-  //   let res_name = name.to_string(self)?;
-  //   Ok((res_name, name_len))
-  // }
-
-  // fn forward_until(
-  //     &mut self,
-  //     allowed_chars: impl Into<String>,
-  //     until: char,
-  // ) -> Result<(), ParsingError> {
-  //     let allowed_chars_string = allowed_chars.into();
-  //     while let Some(c) = self.next_char() {
-  //         if c == until {
-  //             return Ok(());
-  //         }
-  //         if !allowed_chars_string.contains(c) {
-  //             return self.error(ParsingErrorType::UnexpectedChar);
-  //         }
-  //     }
-  //     self.error(ParsingErrorType::UnexpectedEOF)
-  // }
 }

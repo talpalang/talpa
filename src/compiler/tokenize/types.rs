@@ -299,6 +299,8 @@ pub fn parse_enum<'a>(
       c if !valid_name_char(c) => return t.unexpected_char(c),
       c => c,
     };
+
+    // parse the name
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
     while let Some(c) = t.next_char() {
       match c {
@@ -307,6 +309,14 @@ pub fn parse_enum<'a>(
         '\n' => {
           t.index -= 1;
           break;
+        }
+        '}' => {
+          // end of enum stop the fields loop
+          res.fields.push(EnumField {
+            name: field_name_builder.to_string(t)?,
+            value: None,
+          });
+          break 'fieldsLoop;
         }
         _ => return t.unexpected_char(c),
       }

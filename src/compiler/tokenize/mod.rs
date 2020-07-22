@@ -18,7 +18,7 @@ pub use globals::{DataType, Tokenizer};
 pub use numbers::{Number, NumberType};
 pub use statics::Keywords;
 pub use strings::String_;
-pub use types::{Enum, GlobalType, Struct, Type};
+pub use types::{Enum, GlobalType, Struct, Type, TypeType};
 pub use variable::{VarType, Variable};
 
 #[cfg(test)]

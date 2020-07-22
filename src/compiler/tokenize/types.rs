@@ -8,8 +8,8 @@ use utils::MatchString;
 
 #[derive(Debug, Clone)]
 pub struct Type {
-  location: CodeLocation,
-  type_: TypeType,
+  pub location: CodeLocation,
+  pub type_: TypeType,
 }
 
 impl Type {

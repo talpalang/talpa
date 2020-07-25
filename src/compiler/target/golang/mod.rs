@@ -29,6 +29,15 @@ impl Go {
           tokenize::types::TypeType::Char => "string".to_string(),
           tokenize::types::TypeType::String => "string".to_string(),
           tokenize::types::TypeType::Int => "int".to_string(),
+          tokenize::types::TypeType::I8 => "int8".to_string(),
+          tokenize::types::TypeType::I16 => "int16".to_string(),
+          tokenize::types::TypeType::I32 => "int32".to_string(),
+          tokenize::types::TypeType::I64 => "int64".to_string(),
+          tokenize::types::TypeType::UInt => "uint".to_string(),
+          tokenize::types::TypeType::U8 => "uint8".to_string(),
+          tokenize::types::TypeType::U16 => "uint16".to_string(),
+          tokenize::types::TypeType::U32 => "uint32".to_string(),
+          tokenize::types::TypeType::U64 => "uint64".to_string(),
           tokenize::types::TypeType::TypeRef(res) => res,
           _ => unimplemented!()
         }
@@ -88,8 +97,53 @@ impl Go {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(_,_,_) => unimplemented!()
+      ActionType::If(if_,else_if,else_) => self.action_if(if_,else_if,else_, lb)
     };
+  }
+  fn if_block(
+    &mut self,
+    lb: &mut impl BuildItems,
+    body: Actions,
+    prefix: &'static str,
+    add_to_prefix: impl FnOnce(&mut Self, &mut Inline),
+  ) {
+    let mut prefix = Inline::from_str(prefix);
+    add_to_prefix(self, &mut prefix);
+    let mut actions = Block::new();
+    for action in body.list {
+      self.action(action, &mut actions, false);
+    }
+    lb.function(prefix, actions);
+  }
+  pub fn action_if(
+    &mut self, 
+    if_: (
+      std::boxed::Box<tokenize::action::Action>,
+      tokenize::actions::Actions,
+    ),
+    else_ifs: std::vec::Vec<(tokenize::action::Action, tokenize::actions::Actions)>,
+    else_: std::option::Option<tokenize::actions::Actions>,
+    lb: &mut impl BuildItems,
+  ) {
+    // if
+    let segment = *if_.0;
+    let body = if_.1;
+    self.if_block(lb, body, "if ", |s, p| {
+      s.action(segment, p, true);
+    });
+
+    // else if
+    for else_if in else_ifs {
+      self.if_block(lb, else_if.1.clone(), "else if ", |s, p| {
+        s.action(else_if.0.clone(), p, true);
+      });
+    }
+
+    // else
+    match else_ {
+      Some(res) => self.if_block(lb, res, "else", |_, _| {}),
+      None => {}
+    }
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
     //   for _, v := range items {

@@ -38,7 +38,7 @@ impl Go {
     match type_ {
       Some(res) => {
         match res.type_ {
-          tokenize::types::TypeType::Char => "string".to_string(),
+          tokenize::types::TypeType::Char => "rune".to_string(),
           tokenize::types::TypeType::String => "string".to_string(),
           tokenize::types::TypeType::Struct(res) => self.type_struct(res),
           tokenize::types::TypeType::Int => "int".to_string(),

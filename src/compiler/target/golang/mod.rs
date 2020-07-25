@@ -6,7 +6,7 @@ impl Go {
   /// Generate golang code using tokens from parser
   pub fn generate(lb: &mut LangBuilder, t: AnilizedTokens) -> Result<(), LocationError> {
 
-    // TODO: Replace when file importing is allowed
+    // TODO: Replace when file importing is implemented
     lb.code("package main");
 
     let mut code = Self {};
@@ -15,14 +15,20 @@ impl Go {
     for (_, func) in t.functions {
       code.function(func, lb);
     }
-    // define globals
-    for (_, glob) in t.vars {
-      code.global_var(glob, lb);
+
+    // define types
+    for (_, type_) in t.types {
+      code.code_type(type_, lb);
     }
 
     // define structs
     for (_, structure) in t.structs {
       code.structure(structure, lb);
+    }
+    
+    // define globals
+    for (_, glob) in t.vars {
+      code.global_var(glob, lb);
     }
 
     Ok(())
@@ -51,6 +57,10 @@ impl Go {
       },
       None => "".to_string()
     }
+  }
+  /// Parse a custom type definition
+  pub fn code_type(&mut self, type_: tokenize::types::GlobalType, lb: &mut impl BuildItems) {
+    lb.code(format!("type {} {}", type_.name, self.get_type(Some(type_.type_))));
   }
   /// Parse a function
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {

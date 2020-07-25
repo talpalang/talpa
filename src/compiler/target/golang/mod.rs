@@ -15,10 +15,12 @@ impl Go {
     for (_, func) in t.functions {
       code.function(func, lb);
     }
+    // define globals
     for (_, glob) in t.vars {
       code.global_var(glob, lb);
     }
 
+    // define structs
     for (_, structure) in t.structs {
       code.structure(structure, lb);
     }
@@ -32,6 +34,7 @@ impl Go {
         match res.type_ {
           tokenize::types::TypeType::Char => "string".to_string(),
           tokenize::types::TypeType::String => "string".to_string(),
+          tokenize::types::TypeType::Struct(res) => self.type_struct(res),
           tokenize::types::TypeType::Int => "int".to_string(),
           tokenize::types::TypeType::I8 => "int8".to_string(),
           tokenize::types::TypeType::I16 => "int16".to_string(),
@@ -53,8 +56,8 @@ impl Go {
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
     let mut prefix_str = format!("func {}(", func.name.unwrap());
     let mut args = vec![];
-    for (name, _) in func.args {
-      args.push(name);
+    for (name, type_) in func.args {
+      args.push(format!("{} {}", name, self.get_type(Some(type_))));
     }
     prefix_str += &args.join(", ");
     prefix_str += ")";
@@ -86,6 +89,15 @@ impl Go {
       fields.code(format!("{} {}", field.0, self.get_type(Some(field.1))));
     }
     lb.function(Inline::from_str(prefix_str), fields);
+  }
+  // Inline structs
+  pub fn type_struct(&mut self, structure: Struct) -> String {
+    let mut code = "struct {\n".to_string();
+    for field in structure.fields {
+      code += &format!("\t{} {}\n", field.0, self.get_type(Some(field.1)));
+    }
+    code += "}\n";
+    return code;
   }
   /// Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {

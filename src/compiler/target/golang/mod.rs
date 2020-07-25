@@ -19,6 +19,10 @@ impl Go {
       code.global_var(glob, lb);
     }
 
+    for (_, structure) in t.structs {
+      code.structure(structure, lb);
+    }
+
     Ok(())
   }
   /// Get the type as a string
@@ -74,7 +78,16 @@ impl Go {
 
     lb.inline(inline);
   }
-  // Parse an action
+  /// Parse a structure
+  pub fn structure(&mut self, structure: Struct, lb: &mut impl BuildItems) {
+    let prefix_str = format!("type {} struct ", structure.name.unwrap());
+    let mut fields = Block::new();
+    for field in structure.fields {
+      fields.code(format!("{} {}", field.0, self.get_type(Some(field.1))));
+    }
+    lb.function(Inline::from_str(prefix_str), fields);
+  }
+  /// Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {
     // match an action and return code
     match action.type_ {

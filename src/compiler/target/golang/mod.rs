@@ -5,7 +5,6 @@ pub struct Go {}
 impl Go {
   /// Generate golang code using tokens from parser
   pub fn generate(lb: &mut LangBuilder, t: AnilizedTokens) -> Result<(), LocationError> {
-
     // TODO: Replace when file importing is implemented
     lb.code("package main");
 
@@ -25,7 +24,7 @@ impl Go {
     for (_, structure) in t.structs {
       code.structure(structure, lb);
     }
-    
+
     // define globals
     for (_, glob) in t.vars {
       code.global_var(glob, lb);
@@ -36,31 +35,33 @@ impl Go {
   /// Get the type as a string
   pub fn get_type(&mut self, type_: Option<tokenize::types::Type>) -> String {
     match type_ {
-      Some(res) => {
-        match res.type_ {
-          tokenize::types::TypeType::Char => "rune".to_string(),
-          tokenize::types::TypeType::String => "string".to_string(),
-          tokenize::types::TypeType::Struct(res) => self.type_struct(res),
-          tokenize::types::TypeType::Int => "int".to_string(),
-          tokenize::types::TypeType::I8 => "int8".to_string(),
-          tokenize::types::TypeType::I16 => "int16".to_string(),
-          tokenize::types::TypeType::I32 => "int32".to_string(),
-          tokenize::types::TypeType::I64 => "int64".to_string(),
-          tokenize::types::TypeType::UInt => "uint".to_string(),
-          tokenize::types::TypeType::U8 => "uint8".to_string(),
-          tokenize::types::TypeType::U16 => "uint16".to_string(),
-          tokenize::types::TypeType::U32 => "uint32".to_string(),
-          tokenize::types::TypeType::U64 => "uint64".to_string(),
-          tokenize::types::TypeType::TypeRef(res) => res,
-          _ => unimplemented!()
-        }
+      Some(res) => match res.type_ {
+        tokenize::types::TypeType::Char => "rune".to_string(),
+        tokenize::types::TypeType::String => "string".to_string(),
+        tokenize::types::TypeType::Struct(res) => self.type_struct(res),
+        tokenize::types::TypeType::Int => "int".to_string(),
+        tokenize::types::TypeType::I8 => "int8".to_string(),
+        tokenize::types::TypeType::I16 => "int16".to_string(),
+        tokenize::types::TypeType::I32 => "int32".to_string(),
+        tokenize::types::TypeType::I64 => "int64".to_string(),
+        tokenize::types::TypeType::UInt => "uint".to_string(),
+        tokenize::types::TypeType::U8 => "uint8".to_string(),
+        tokenize::types::TypeType::U16 => "uint16".to_string(),
+        tokenize::types::TypeType::U32 => "uint32".to_string(),
+        tokenize::types::TypeType::U64 => "uint64".to_string(),
+        tokenize::types::TypeType::TypeRef(res) => res,
+        _ => unimplemented!(),
       },
-      None => "".to_string()
+      None => "".to_string(),
     }
   }
   /// Parse a custom type definition
   pub fn code_type(&mut self, type_: tokenize::types::GlobalType, lb: &mut impl BuildItems) {
-    lb.code(format!("type {} {}", type_.name, self.get_type(Some(type_.type_))));
+    lb.code(format!(
+      "type {} {}",
+      type_.name,
+      self.get_type(Some(type_.type_))
+    ));
   }
   /// Parse a function
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
@@ -132,7 +133,7 @@ impl Go {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(if_,else_if,else_) => self.action_if(if_,else_if,else_, lb)
+      ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb),
     };
   }
   fn if_block(
@@ -151,7 +152,7 @@ impl Go {
     lb.function(prefix, actions);
   }
   pub fn action_if(
-    &mut self, 
+    &mut self,
     if_: (
       std::boxed::Box<tokenize::action::Action>,
       tokenize::actions::Actions,
@@ -184,7 +185,8 @@ impl Go {
     //   for _, v := range items {
     //     fmt.Println(v)
     // }
-    let mut prefix = Inline::from_str(format!("for _, {name} := range ", name = &action.item_name,));
+    let mut prefix =
+      Inline::from_str(format!("for _, {name} := range ", name = &action.item_name,));
     self.action(*action.list, &mut prefix, true);
 
     let mut actions = Block::new();
@@ -194,11 +196,7 @@ impl Go {
 
     lb.function(prefix, actions);
   }
-  pub fn action_func_call(
-    &mut self,
-    action: ActionFunctionCall,
-    lb: &mut impl BuildItems,
-  ) {
+  pub fn action_func_call(&mut self, action: ActionFunctionCall, lb: &mut impl BuildItems) {
     let mut src = Inline::from_str(action.name + "(");
 
     for (i, arg) in action.arguments.iter().enumerate() {

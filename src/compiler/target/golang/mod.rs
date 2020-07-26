@@ -153,12 +153,9 @@ impl Go {
   }
   pub fn action_if(
     &mut self,
-    if_: (
-      std::boxed::Box<tokenize::action::Action>,
-      tokenize::actions::Actions,
-    ),
-    else_ifs: std::vec::Vec<(tokenize::action::Action, tokenize::actions::Actions)>,
-    else_: std::option::Option<tokenize::actions::Actions>,
+    if_: (std::boxed::Box<Action>, Actions),
+    else_ifs: std::vec::Vec<(Action, Actions)>,
+    else_: std::option::Option<Actions>,
     lb: &mut impl BuildItems,
   ) {
     // if
@@ -252,7 +249,7 @@ impl Go {
 
     lb.inline(src);
   }
-  pub fn action_while(&mut self, action: tokenize::ActionWhile, lb: &mut impl BuildItems) {
+  pub fn action_while(&mut self, action: ActionWhile, lb: &mut impl BuildItems) {
     let mut prefix = Inline::from_str("for ");
     self.action(*action.true_value, &mut prefix, true);
 

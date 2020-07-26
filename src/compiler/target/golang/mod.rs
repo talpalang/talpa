@@ -33,27 +33,24 @@ impl Go {
     Ok(())
   }
   /// Get the type as a string
-  pub fn get_type(&mut self, type_: Option<Type>) -> String {
-    match type_ {
-      Some(res) => match res.type_ {
-        TypeType::Char => "rune".to_string(),
-        TypeType::String => "string".to_string(),
-        TypeType::Struct(res) => self.type_struct(res),
-        TypeType::Int => "int".to_string(),
-        TypeType::I8 => "int8".to_string(),
-        TypeType::I16 => "int16".to_string(),
-        TypeType::I32 => "int32".to_string(),
-        TypeType::I64 => "int64".to_string(),
-        TypeType::UInt => "uint".to_string(),
-        TypeType::U8 => "uint8".to_string(),
-        TypeType::U16 => "uint16".to_string(),
-        TypeType::U32 => "uint32".to_string(),
-        TypeType::U64 => "uint64".to_string(),
-        TypeType::TypeRef(res) => res,
-        TypeType::Array(res) => self.type_array(res),
-        TypeType::Enum(_) => unimplemented!(),
-      },
-      None => "".to_string(),
+  pub fn get_type(&mut self, type_: Type) -> String {
+    match type_.type_ {
+      TypeType::Char => "rune".to_string(),
+      TypeType::String => "string".to_string(),
+      TypeType::Struct(res) => self.type_struct(res),
+      TypeType::Int => "int".to_string(),
+      TypeType::I8 => "int8".to_string(),
+      TypeType::I16 => "int16".to_string(),
+      TypeType::I32 => "int32".to_string(),
+      TypeType::I64 => "int64".to_string(),
+      TypeType::UInt => "uint".to_string(),
+      TypeType::U8 => "uint8".to_string(),
+      TypeType::U16 => "uint16".to_string(),
+      TypeType::U32 => "uint32".to_string(),
+      TypeType::U64 => "uint64".to_string(),
+      TypeType::TypeRef(res) => res,
+      TypeType::Array(res) => self.type_array(res),
+      TypeType::Enum(_) => unimplemented!(),
     }
   }
   /// Parse a custom type definition
@@ -61,7 +58,7 @@ impl Go {
     lb.code(format!(
       "type {} {}",
       type_.name,
-      self.get_type(Some(type_.type_))
+      self.get_type(type_.type_)
     ));
   }
   /// Parse a function
@@ -69,13 +66,16 @@ impl Go {
     let mut prefix_str = format!("func {}(", func.name.unwrap());
     let mut args = vec![];
     for (name, type_) in func.args {
-      args.push(format!("{} {}", name, self.get_type(Some(type_))));
+      args.push(format!("{} {}", name, self.get_type(type_)));
     }
     prefix_str += &args.join(", ");
     prefix_str += ")";
 
+    if let Some(type_) = func.res {
+      prefix_str += " ";
+      prefix_str += &self.get_type(type_);
+    }
     prefix_str += " ";
-    prefix_str += &self.get_type(func.res);
 
     let mut actions = Block::new();
     for action in func.body.list {
@@ -103,7 +103,7 @@ impl Go {
 
     let mut fields = Block::new();
     for field in structure.fields {
-      fields.code(format!("{} {}", field.0, self.get_type(Some(field.1))));
+      fields.code(format!("{} {}", field.0, self.get_type(field.1)));
     }
     lb.function(Inline::from_str(prefix_str), fields);
   }
@@ -111,14 +111,14 @@ impl Go {
   pub fn type_struct(&mut self, structure: Struct) -> String {
     let mut code = "struct {\n".to_string();
     for field in structure.fields {
-      code += &format!("\t{} {}\n", field.0, self.get_type(Some(field.1)));
+      code += &format!("\t{} {}\n", field.0, self.get_type(field.1));
     }
     code += "}\n";
     code
   }
   /// Parse array type
   pub fn type_array(&mut self, item: Box<Type>) -> String {
-    format!("[]{}", self.get_type(Some(*item)))
+    format!("[]{}", self.get_type(*item))
   }
   /// Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {

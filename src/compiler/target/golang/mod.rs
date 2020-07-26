@@ -50,7 +50,7 @@ impl Go {
         TypeType::U32 => "uint32".to_string(),
         TypeType::U64 => "uint64".to_string(),
         TypeType::TypeRef(res) => res,
-        _ => unimplemented!(),
+        TypeType::Enum(_) | TypeType::Array(_) => unimplemented!(),
       },
       None => "".to_string(),
     }

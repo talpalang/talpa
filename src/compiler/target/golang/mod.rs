@@ -234,15 +234,7 @@ impl Go {
     lb.code(format!("\"{}\"", action.content));
   }
   pub fn action_var(&mut self, action: Variable, lb: &mut impl BuildItems) {
-    let prefix = format!(
-      "{var_type} {var_name} = ",
-      var_type = if let VarType::Const = action.var_type {
-        "const"
-      } else {
-        "var"
-      },
-      var_name = action.name
-    );
+    let prefix = format!("{} := ", action.name);
     let mut src = Inline::from_str(prefix);
 
     self.action(*action.action, &mut src, true);

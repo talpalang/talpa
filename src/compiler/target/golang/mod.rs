@@ -218,11 +218,15 @@ impl Go {
     lb.function(prefix, contents);
   }
   pub fn action_return(&mut self, action: Option<Box<Action>>, lb: &mut impl BuildItems) {
-    let mut src = Inline::from_str("return ");
+    let to_add = if let Some(return_action) = action {
+      let mut src = Inline::from_str("return ");
+      self.action(*return_action, &mut src, true);
+      src
+    } else {
+      Inline::from_str("return")
+    };
 
-    self.action(*action.unwrap(), &mut src, true);
-
-    lb.inline(src);
+    lb.inline(to_add);
   }
   pub fn action_num(&mut self, action: Number, lb: &mut impl BuildItems) {
     lb.code(match action.type_ {

@@ -1,12 +1,12 @@
 mod builder;
-mod javascript;
 mod golang;
+mod javascript;
 
 use super::*;
 pub use anylize::AnilizedTokens;
 pub use builder::{Block, BuildItems, Inline, LangBuilder};
-use javascript::JavaScript;
 use golang::Go;
+use javascript::JavaScript;
 pub use tokenize::{
   Action, ActionFor, ActionFunctionCall, ActionType, Actions, Enum, Function, GlobalType, Number,
   NumberType, String_, Struct, VarType, Variable,
@@ -14,8 +14,11 @@ pub use tokenize::{
 
 #[derive(Clone)]
 pub enum Lang {
+  // Currently dead because we do not yet have a working CLI with a JS option
+  // TODO: fix this
+  #[allow(dead_code)]
   JS,
-  Go
+  Go,
 }
 
 pub fn generate(t: AnilizedTokens, lang: Lang) -> Result<String, LocationError> {

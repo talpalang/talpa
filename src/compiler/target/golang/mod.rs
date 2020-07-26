@@ -94,7 +94,12 @@ impl Go {
   }
   /// Parse a structure
   pub fn structure(&mut self, structure: Struct, lb: &mut impl BuildItems) {
-    let prefix_str = format!("type {} struct ", structure.name.unwrap());
+    let prefix_str = if let Some(name) = structure.name {
+      format!("type {} struct ", name)
+    } else {
+      String::from("struct ")
+    };
+
     let mut fields = Block::new();
     for field in structure.fields {
       fields.code(format!("{} {}", field.0, self.get_type(Some(field.1))));

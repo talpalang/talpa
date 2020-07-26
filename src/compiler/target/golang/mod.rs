@@ -50,7 +50,8 @@ impl Go {
         TypeType::U32 => "uint32".to_string(),
         TypeType::U64 => "uint64".to_string(),
         TypeType::TypeRef(res) => res,
-        TypeType::Enum(_) | TypeType::Array(_) => unimplemented!(),
+        TypeType::Array(res) => self.type_array(res),
+        TypeType::Enum(_) => unimplemented!(),
       },
       None => "".to_string(),
     }
@@ -106,14 +107,18 @@ impl Go {
     }
     lb.function(Inline::from_str(prefix_str), fields);
   }
-  // Inline structs
+  /// Global and inline structs
   pub fn type_struct(&mut self, structure: Struct) -> String {
     let mut code = "struct {\n".to_string();
     for field in structure.fields {
       code += &format!("\t{} {}\n", field.0, self.get_type(Some(field.1)));
     }
     code += "}\n";
-    return code;
+    code
+  }
+  /// Parse array type
+  pub fn type_array(&mut self, item: Box<Type>) -> String {
+    format!("[]{}", self.get_type(Some(*item)))
   }
   /// Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {

@@ -17,7 +17,7 @@ impl Go {
 
     // define types
     for (_, type_) in t.types {
-      code.code_type(type_, lb);
+      code.custom_type(type_, lb);
     }
 
     // define structs
@@ -32,57 +32,59 @@ impl Go {
 
     Ok(())
   }
-  /// Get the type as a string
-  pub fn get_type(&mut self, type_: Type) -> String {
+  /// Parse a type
+  pub fn parse_type(&mut self, type_: Type, lb: &mut impl BuildItems) {
     match type_.type_ {
-      TypeType::Char => "rune".to_string(),
-      TypeType::String => "string".to_string(),
-      TypeType::Struct(res) => self.type_struct(res),
-      TypeType::Int => "int".to_string(),
-      TypeType::I8 => "int8".to_string(),
-      TypeType::I16 => "int16".to_string(),
-      TypeType::I32 => "int32".to_string(),
-      TypeType::I64 => "int64".to_string(),
-      TypeType::UInt => "uint".to_string(),
-      TypeType::U8 => "uint8".to_string(),
-      TypeType::U16 => "uint16".to_string(),
-      TypeType::U32 => "uint32".to_string(),
-      TypeType::U64 => "uint64".to_string(),
-      TypeType::TypeRef(res) => res,
-      TypeType::Array(res) => self.type_array(res),
-      TypeType::Enum(_) => unimplemented!(),
+      TypeType::Array(res) => self.type_array(res, lb),
+      TypeType::Char => lb.code("char"),
+      TypeType::Int => lb.code("int"),
+      TypeType::I8 => lb.code("int8"),
+      TypeType::I16 => lb.code("int16"),
+      TypeType::I32 => lb.code("int32"),
+      TypeType::I64 => lb.code("int64"),
+      TypeType::UInt => lb.code("uint"),
+      TypeType::U8 => lb.code("uint8"),
+      TypeType::U16 => lb.code("uint16"),
+      TypeType::U32 => lb.code("uint32"),
+      TypeType::U64 => lb.code("uint64"),
+      TypeType::String => lb.code("string"),
+      TypeType::Struct(res) => self.structure(res, lb),
+      TypeType::TypeRef(res) => lb.code(res),
+      TypeType::Enum(_) => unimplemented!()
     }
   }
   /// Parse a custom type definition
-  pub fn code_type(&mut self, type_: GlobalType, lb: &mut impl BuildItems) {
-    lb.code(format!(
-      "type {} {}",
-      type_.name,
-      self.get_type(type_.type_)
-    ));
+  pub fn custom_type(&mut self, type_: GlobalType, lb: &mut impl BuildItems) {
+    let mut code = Inline::from_str(format!("type {} ", type_.name));
+    self.parse_type(type_.type_, &mut code);
+    lb.inline(code);
   }
   /// Parse a function
   pub fn function(&mut self, func: Function, lb: &mut impl BuildItems) {
-    let mut prefix_str = format!("func {}(", func.name.unwrap());
-    let mut args = vec![];
+    let mut prefix = Inline::from_str(format!("func {}(", func.name.unwrap()));
+    let mut is_first = true;
     for (name, type_) in func.args {
-      args.push(format!("{} {}", name, self.get_type(type_)));
+      if is_first {
+        is_first = false;
+      } else {
+        prefix.code(", ");
+      }
+      prefix.code(format!("{} ", name));
+      self.parse_type(type_, &mut prefix);
     }
-    prefix_str += &args.join(", ");
-    prefix_str += ")";
+    prefix.code(")");
 
     if let Some(type_) = func.res {
-      prefix_str += " ";
-      prefix_str += &self.get_type(type_);
+      prefix.code(" ");
+      self.parse_type(type_, &mut prefix);
     }
-    prefix_str += " ";
 
     let mut actions = Block::new();
     for action in func.body.list {
       self.action(action, &mut actions, false);
     }
 
-    lb.function(Inline::from_str(prefix_str), actions);
+    lb.function(prefix, actions);
   }
   /// Parse a const variable
   pub fn global_var(&mut self, var: Variable, lb: &mut impl BuildItems) {
@@ -103,22 +105,17 @@ impl Go {
 
     let mut fields = Block::new();
     for field in structure.fields {
-      fields.code(format!("{} {}", field.0, self.get_type(field.1)));
+      let mut contents = Inline::from_str(format!("{} ", field.0));
+      self.parse_type(field.1, &mut contents);
+      fields.inline(contents);
     }
     lb.function(Inline::from_str(prefix_str), fields);
   }
-  /// Global and inline structs
-  pub fn type_struct(&mut self, structure: Struct) -> String {
-    let mut code = "struct {\n".to_string();
-    for field in structure.fields {
-      code += &format!("\t{} {}\n", field.0, self.get_type(field.1));
-    }
-    code += "}\n";
-    code
-  }
   /// Parse array type
-  pub fn type_array(&mut self, item: Box<Type>) -> String {
-    format!("[]{}", self.get_type(*item))
+  pub fn type_array(&mut self, item: Box<Type>, lb: &mut impl BuildItems) {
+    let mut array = Inline::from_str("[]");
+    self.parse_type(*item, &mut array);
+    lb.inline(array);
   }
   /// Parse an action
   pub fn action(&mut self, action: Action, lb: &mut impl BuildItems, inline: bool) {

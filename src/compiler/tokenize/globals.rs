@@ -1,18 +1,15 @@
 use super::*;
-use errors::{IOError, LocationError, StateError, TokenizeError};
+use errors::{LocationError, StateError, TokenizeError};
 use files::CodeLocation;
 use function::parse_function;
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::File;
-use std::io::prelude::*;
 use types::{parse_enum, parse_global_type, parse_struct};
 use utils::MatchString;
 use variable::parse_var;
 
 pub struct Tokenizer {
   contents: Vec<u8>,
-  file_name: Option<String>,
   pub index: usize,
   pub last_line_x: usize, // Only set if going to
   pub xy: (usize, usize),
@@ -25,7 +22,6 @@ pub struct Tokenizer {
 
 #[derive(Debug)]
 struct SimpleTokenizer<'a> {
-  pub file_name: &'a Option<String>,
   pub functions: &'a Vec<Function>,
   pub vars: &'a Vec<Variable>,
   pub structs: &'a Vec<Struct>,
@@ -36,7 +32,6 @@ struct SimpleTokenizer<'a> {
 impl fmt::Debug for Tokenizer {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple_tokenized = SimpleTokenizer {
-      file_name: &self.file_name,
       functions: &self.functions,
       vars: &self.vars,
       structs: &self.structs,
@@ -60,46 +55,30 @@ pub enum DataType<'a> {
 }
 
 impl Tokenizer {
-  pub fn tokenize(contents: DataType) -> Result<Self, LocationError> {
-    let mut tokenizer = Self {
-      index: 0,
-      xy: (0, 0),
-      last_line_x: 0,
-      contents: vec![],
-      functions: vec![],
-      vars: vec![],
-      structs: vec![],
-      enums: vec![],
-      types: vec![],
-      file_name: None,
-    };
-
-    let mut tokens = match contents {
-      DataType::File(location) => {
-        let mut file = match File::open(location) {
-          Ok(f) => f,
-          Err(err) => return tokenizer.custom_error(IOError::IO(format!("{}", err)), None, true),
-        };
-        let mut contents: Vec<u8> = vec![];
-        file.read_to_end(&mut contents).unwrap();
-        contents
-      }
-      DataType::Direct(bytes) => bytes,
-    };
-
+  pub fn tokenize(contents: Vec<u8>) -> Result<Self, LocationError> {
     let mut chars_to_remove: Vec<usize> = vec![];
 
     // Remove all the '\r' from the code because we currently do not support it
-    for (i, c) in tokens.iter().enumerate().rev() {
+    for (i, c) in contents.iter().enumerate().rev() {
       if *c as char == '\r' {
         chars_to_remove.push(i);
       }
     }
     for i in chars_to_remove {
-      tokens.remove(i);
+      contents.remove(i);
     }
 
-    tokenizer.contents = tokens;
+    let mut tokenizer = Self {
+      index: 0,
+      xy: (0, 0),
+      last_line_x: 0,
+      contents,
+      functions: vec![],
+      vars: vec![],
+      structs: vec![],
+      enums: vec![],
+      types: vec![],
+    };
 
     tokenizer.parse_nothing()?;
     Ok(tokenizer)
@@ -109,7 +88,7 @@ impl Tokenizer {
   where
     Y: Into<StateError>,
   {
-    self.custom_error(error, None, false)
+    self.custom_error(error, None)
   }
 
   pub fn unexpected_char<T>(&self, c: char) -> Result<T, LocationError> {
@@ -124,22 +103,7 @@ impl Tokenizer {
     &self,
     error: impl Into<StateError>,
     file_char_number: Option<usize>,
-    only_file_name: bool,
   ) -> Result<T, LocationError> {
-    if only_file_name {
-      return Err(LocationError {
-        location: if let Some(name) = self.file_name.clone() {
-          CodeLocation::only_file_name(name)
-        } else {
-          CodeLocation::empty()
-        },
-        error_type: error.into(),
-        prev_line: None,
-        line: None,
-        next_line: None,
-      });
-    }
-
     let (prev_line, line, next_line, x, y) = if let Some(use_index) = file_char_number {
       let mut y = 1;
       let mut x = 0;

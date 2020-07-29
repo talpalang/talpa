@@ -3,6 +3,7 @@ mod compiler;
 use compiler::{
     AnilizedTokens, CodeLocation, Compiler, CompilerProps, Lang, LocationError, Options,
 };
+use std::fs;
 
 struct CLI {
     warnings: usize,
@@ -21,6 +22,12 @@ impl CLI {
 }
 
 impl CompilerProps for CLI {
+    fn open_file(&mut self, file_name: String) -> Result<Vec<u8>, String> {
+        match fs::read(file_name) {
+            Err(err) => Err(format!("{}", err)),
+            Ok(c) => Ok(c),
+        }
+    }
     fn get_options(&self) -> Options {
         self.options.clone()
     }

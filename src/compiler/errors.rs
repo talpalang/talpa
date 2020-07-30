@@ -6,21 +6,21 @@ use std::error::Error;
 
 #[derive(Clone)]
 pub struct LocationError {
-  pub location: CodeLocation,
   pub error_type: StateError,
   pub prev_line: Option<String>,
-  pub line: Option<String>,
+  pub line: Option<(String, usize, usize)>,
   pub next_line: Option<String>,
+  pub file_name: Option<String>,
 }
 
 impl LocationError {
-  pub fn new_simple(err: impl Into<StateError>) -> Self {
+  pub fn only_file_name(error: impl Into<StateError>, file_name: impl Into<String>) -> Self {
     Self {
-      location: CodeLocation::empty(),
-      error_type: err.into(),
+      error_type: error.into(),
       prev_line: None,
       line: None,
       next_line: None,
+      file_name: Some(file_name.into()),
     }
   }
   fn err(&self) -> String {
@@ -28,15 +28,13 @@ impl LocationError {
 
     let err = self.clone();
 
-    match (err.line, err.location.y, err.location.file_name) {
-      (Some(line), Some(y), file_name) => {
-        if let Some(file_name) = file_name {
-          output.push(format!("Error in file: {}", file_name));
+    match (err.line, self.file_name) {
+      (Some((line, x, y)), file_name) => {
+        output.push(if let Some(name) = file_name {
+          format!("Error in file: {}", name)
         } else {
-          output.push("Error:".into());
-        }
-
-        let x = if let Some(x) = err.location.x { x } else { 0 };
+          String::from("Error:")
+        });
 
         if let Some(line) = err.prev_line.clone() {
           output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
@@ -58,11 +56,11 @@ impl LocationError {
           output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
         }
       }
-      (_, _, Some(file_name)) => {
-        output.push(format!("Error in file: {}\n{}", file_name, err.error_type));
+      (_, Some(name)) => {
+        output.push(format!("Error in file: {}\n{}", name, err.error_type));
       }
       _ => {
-        output.push(format!("Error:\n{}", err.error_type));
+        output.push(String::from("Error:"));
       }
     }
 
@@ -119,6 +117,7 @@ impl Display for StateError {
 
 #[derive(Clone)]
 pub enum TokenizeError {
+  UnableToOpenFile(String),
   IncompletedArgument,
   UnexpectedEOF,
   UnexpectedChar(char),
@@ -136,6 +135,7 @@ impl Into<StateError> for TokenizeError {
 impl Display for TokenizeError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
+      Self::UnableToOpenFile(file_name) => write!(f, "Unable to open file {}", file_name),
       Self::IncompletedArgument => write!(f, "Incompletted argument"),
       Self::UnexpectedEOF => write!(f, "Unexpected EOF"),
       Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),

@@ -11,8 +11,12 @@
 /// 2. For
 #[derive(Debug, Clone)]
 pub struct CodeLocation {
-  index: usize,
-  y: u16,
+  pub index: usize,
+  pub y: u16,
 }
 
-impl CodeLocation {}
+impl CodeLocation {
+  pub fn new(index: usize, y: u16) -> Self {
+    Self { index, y }
+  }
+}

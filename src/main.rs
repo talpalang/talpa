@@ -39,11 +39,11 @@ impl CompilerProps for CLI {
         self.errors += 1;
         println!("Warning:\n{:?}", warning);
     }
-    fn debug_formatted_tokens(&mut self, _: CodeLocation, tokens: AnilizedTokens) {
+    fn debug_formatted_tokens(&mut self, _: String, tokens: AnilizedTokens) {
         println!("Debug output:");
         println!("{:#?}", tokens);
     }
-    fn debug_parsed_output(&mut self, _: CodeLocation, src: String) {
+    fn debug_parsed_output(&mut self, _: String, src: String) {
         println!("Parse output:");
         println!("{}", src);
     }
@@ -54,7 +54,7 @@ fn main() {
         lang: Some(Lang::JS),
         debug: true,
     });
-    Compiler::start(&mut cli);
+    Compiler::start("example.tp", &mut cli);
 
     if cli.errors > 0 {
         println!("Unable to compile file, {} errors occurred", cli.errors);

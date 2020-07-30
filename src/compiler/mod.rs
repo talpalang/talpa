@@ -7,11 +7,12 @@ pub mod tokenize;
 use anylize::anilize_tokens;
 pub use anylize::AnilizedTokens;
 pub use errors::LocationError;
+use errors::TokenizeError;
 pub use files::CodeLocation;
 use std::collections::HashMap;
 use target::generate;
 pub use target::Lang;
-use tokenize::{DataType, Tokenizer};
+use tokenize::Tokenizer;
 
 /// This contains compiler options, like the amound of threads to use or the target language
 #[derive(Clone)]
@@ -40,10 +41,10 @@ pub trait CompilerProps {
 
   /// Once the tokens of a file have been anylized they will be send here
   /// Note: Options.debug must be enabled
-  fn debug_formatted_tokens(&mut self, _: CodeLocation, _: AnilizedTokens) {}
+  fn debug_formatted_tokens(&mut self, file_name: String, _: AnilizedTokens) {}
   /// Once output is generated this function will be called
   /// Note: Options.debug must be enabled
-  fn debug_parsed_output(&mut self, _: CodeLocation, _: String) {}
+  fn debug_parsed_output(&mut self, file_name: String, _: String) {}
 }
 
 pub struct Compiler<'a> {
@@ -53,46 +54,62 @@ pub struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-  pub fn open_file(&mut self, file_name: String) -> Vec<u8> {
-    // TODO return error here instaid of unwrapping
-    self.props.open_file(file_name).unwrap()
+  pub fn open_file(&mut self, file_name: String) -> Result<Vec<u8>, LocationError> {
+    match self.props.open_file(file_name) {
+      Err(error) => Err(LocationError::only_file_name(
+        TokenizeError::UnableToOpenFile(file_name),
+        file_name,
+      )),
+      Ok(v) => Ok(v),
+    }
   }
 
-  pub fn start(entry: impl Into<String>, props: &'a mut impl CompilerProps) {
+  pub fn start(entry_file: impl Into<String>, props: &'a mut impl CompilerProps) {
     let mut c = Self {
       opened_files: HashMap::new(),
       options: props.get_options(),
       props: &mut *props,
     };
 
-    let res = match Tokenizer::tokenize(c.props.open_file(entry.into())) {
+    let file_name = entry_file.into();
+
+    let file_data = match c.open_file(file_name) {
+      Ok(val) => val,
+      Err(err) => {
+        c.props.error(err);
+        return;
+      }
+    };
+
+    let res = match Tokenizer::tokenize(file_data) {
       Err(err) => {
         c.props.error(err);
         return;
       }
       Ok(v) => v,
     };
+
     let (formatted_res, anilize_res) = anilize_tokens(&res);
 
     // We don't need the res data anymore from here on wasted memory.
     drop(res);
 
     for warning in anilize_res.warnings {
-      c.props.warning(LocationError::new_simple(warning));
+      c.props
+        .warning(LocationError::only_file_name(warning, file_name));
     }
 
     if anilize_res.errors.len() > 0 {
       for error in anilize_res.errors {
-        c.props.error(LocationError::new_simple(error));
+        c.props
+          .error(LocationError::only_file_name(error, file_name));
       }
       return;
     }
 
     if c.options.debug {
-      c.props.debug_formatted_tokens(
-        CodeLocation::only_file_name(file_name.into()),
-        formatted_res.clone(),
-      );
+      c.props
+        .debug_formatted_tokens(file_name, formatted_res.clone());
     }
 
     if let Some(lang) = c.options.lang {
@@ -105,7 +122,7 @@ impl<'a> Compiler<'a> {
       };
 
       if c.options.debug {
-        c.props.debug_parsed_output(CodeLocation::empty(), src)
+        c.props.debug_parsed_output(file_name, src)
       }
     }
   }

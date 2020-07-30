@@ -11,8 +11,7 @@ use variable::parse_var;
 pub struct Tokenizer {
   contents: Vec<u8>,
   pub index: usize,
-  pub last_line_x: usize, // Only set if going to
-  pub xy: (usize, usize),
+  pub y: u16,
   pub functions: Vec<Function>,
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
@@ -70,8 +69,7 @@ impl Tokenizer {
 
     let mut tokenizer = Self {
       index: 0,
-      xy: (0, 0),
-      last_line_x: 0,
+      y: 1,
       contents,
       functions: vec![],
       vars: vec![],
@@ -88,7 +86,7 @@ impl Tokenizer {
   where
     Y: Into<StateError>,
   {
-    self.custom_error(error, None)
+    self.custom_error(error, CodeLocation::new(self.index, self.y))
   }
 
   pub fn unexpected_char<T>(&self, c: char) -> Result<T, LocationError> {
@@ -102,74 +100,29 @@ impl Tokenizer {
   pub fn custom_error<T>(
     &self,
     error: impl Into<StateError>,
-    file_char_number: Option<usize>,
+    location: CodeLocation,
   ) -> Result<T, LocationError> {
-    let (prev_line, line, next_line, x, y) = if let Some(use_index) = file_char_number {
-      let mut y = 1;
-      let mut x = 0;
-      let mut prev_line_bytes: Option<Vec<u8>> = None;
-      let mut current_line = vec![];
+    let (original_index, y) = self.last_index();
+    let mut index = original_index;
+    let mut prev_line: Vec<u8> = vec![];
+    let mut line: Vec<u8> = vec![];
+    let mut next_line: Vec<u8> = vec![];
 
-      for (index, letter) in self.contents.iter().enumerate() {
-        if index == use_index {
-          break;
-        }
-        match *letter as char {
+    if index > 0 {
+      while let Some(c) = self.contents.get(index) {
+        match *c as char {
           '\n' => {
-            prev_line_bytes = Some(current_line);
-            current_line = vec![];
-            y += 1;
-            x = 0;
+            index -= 1;
+            break;
           }
-          '\r' => {} // Ignore this char
-          letter_char => {
-            current_line.push(*letter);
-            x += if letter_char == '\t' { 2 } else { 1 };
-          }
-        }
+          _ => line.insert(0, *c),
+        };
+        index -= 1;
       }
+    }
 
-      let mut prev_line = None;
-      if let Some(line_data) = prev_line_bytes {
-        prev_line = Some(String::from_utf8(line_data).unwrap())
-      }
-
-      let mut next_line_bytes: Option<Vec<u8>> = None;
-      let iterrator = self.contents.iter().skip(use_index);
-      for letter in iterrator {
-        match *letter as char {
-          '\n' => {
-            if let Some(_) = next_line_bytes {
-              break;
-            }
-            next_line_bytes = Some(vec![]);
-          }
-          _ => {
-            if let Some(mut line) = next_line_bytes {
-              line.push(*letter);
-              next_line_bytes = Some(line);
-            } else {
-              current_line.push(*letter);
-            }
-          }
-        }
-      }
-
-      let next_line = if let Some(bytes) = next_line_bytes {
-        Some(String::from_utf8(bytes).unwrap())
-      } else {
-        None
-      };
-
-      (
-        prev_line,
-        String::from_utf8(current_line).unwrap(),
-        next_line,
-        x,
-        y,
-      )
-    } else {
-      let (use_index, x, y) = self.last_index();
+    let (prev_line, line, next_line, x, y) = {
+      let (use_index, x) = self.last_index();
 
       let mut line: Vec<u8> = vec![];
 
@@ -239,15 +192,11 @@ impl Tokenizer {
     };
 
     Err(LocationError {
-      location: CodeLocation {
-        file_name: self.file_name.clone(),
-        y: Some(y),
-        x: Some(x),
-      },
       error_type: error.into(),
       prev_line,
-      line: Some(line),
+      line: Some((line, x, y)),
       next_line,
+      file_name: None,
     })
   }
 
@@ -274,10 +223,7 @@ impl Tokenizer {
 
     self.index += 1;
     if letter == '\n' {
-      self.last_line_x = self.xy.1;
-      self.xy = (0, self.last_line_x + 1);
-    } else {
-      self.xy.0 += 1;
+      self.y += 1;
     }
 
     // check for the start of a comment
@@ -295,11 +241,8 @@ impl Tokenizer {
 
           // check for newline (end of comment)
           if next == '\n' {
-            self.last_line_x = self.xy.1;
-            self.xy = (0, self.last_line_x + 1);
+            self.y += 1;
             return self.next_char();
-          } else {
-            self.xy.0 += 1;
           }
         }
       }
@@ -308,25 +251,21 @@ impl Tokenizer {
         loop {
           match *self.contents.get(self.index)? as char {
             '\n' => {
-              self.last_line_x = self.xy.1;
-              self.xy = (0, self.last_line_x + 1);
+              self.y += 1;
               self.index += 1;
             }
             '*' => {
-              self.xy.0 += 1;
               self.index += 1;
 
               // * detected
               if let Some(b'/') = self.contents.get(self.index) {
                 // */ detected
-                self.xy.0 += 1;
                 self.index += 1;
 
                 return self.next_char();
               }
             }
             _ => {
-              self.xy.0 += 1;
               self.index += 1;
             }
           }
@@ -488,27 +427,26 @@ impl Tokenizer {
     Ok(())
   }
 
-  pub fn get_file_name(&self) -> Option<String> {
-    self.file_name.clone()
-  }
-
   /// This return the last location
-  /// return values: index, x, y
-  pub fn last_index(&self) -> (usize, usize, usize) {
-    let index = if self.index == 0 { 0 } else { self.index - 1 };
+  /// return values: index, y
+  pub fn last_index(&self) -> (usize, u16) {
+    if self.index == 0 {
+      return (0, 0);
+    }
 
-    let (x, y) = if self.xy.0 == 0 {
-      (0, self.last_line_x)
-    } else {
-      (self.xy.0 - 1, self.xy.1)
-    };
-
-    (index, x, y)
+    (
+      self.index - 1,
+      if let Some('\n') = self.seek_next_char() {
+        self.y - 1
+      } else {
+        self.y
+      },
+    )
   }
 
   pub fn last_index_location(&self) -> CodeLocation {
-    let (_, x, y) = self.last_index();
-    CodeLocation::only_location(x, y)
+    let (index, y) = self.last_index();
+    CodeLocation::new(index, y)
   }
 
   /*

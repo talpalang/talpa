@@ -44,7 +44,7 @@ impl CompilerProps for CLI {
 
 fn main() {
     let mut cli = CLI::new(Options {
-        lang: Some(Lang::JS),
+        lang: Some(Lang::Go),
         debug: true,
     });
     Compiler::start(&mut cli);

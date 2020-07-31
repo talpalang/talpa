@@ -114,7 +114,10 @@ impl MatchString for DetectType {
   }
 }
 
-pub fn parse_type<'a>(t: &'a mut Tokenizer, go_back_one: bool) -> Result<Type, LocationError> {
+pub fn parse_type<'a, 'b>(
+  t: &'b mut Tokenizer<'a>,
+  go_back_one: bool,
+) -> Result<Type, LocationError> {
   if go_back_one {
     t.index -= 1;
   }
@@ -196,7 +199,7 @@ pub struct GlobalType {
   pub type_: Type,
 }
 
-pub fn parse_global_type<'a>(t: &'a mut Tokenizer) -> Result<GlobalType, LocationError> {
+pub fn parse_global_type<'a>(t: &mut Tokenizer<'a>) -> Result<GlobalType, LocationError> {
   // Parse the global type name
   let first_name_char = match t.must_next_while_empty()? {
     '{' => {
@@ -241,8 +244,8 @@ pub struct EnumField {
   pub value: Option<Action>,
 }
 
-pub fn parse_enum<'a>(
-  t: &'a mut Tokenizer,
+pub fn parse_enum<'a, 'b>(
+  t: &'b mut Tokenizer<'a>,
   inline: bool,
   back_one: bool,
 ) -> Result<Enum, LocationError> {
@@ -352,8 +355,8 @@ pub struct Struct {
   pub fields: HashMap<String, Type>,
 }
 
-pub fn parse_struct<'a>(
-  t: &'a mut Tokenizer,
+pub fn parse_struct<'a, 'b>(
+  t: &'b mut Tokenizer<'a>,
   inline: bool,
   back_one: bool,
 ) -> Result<Struct, LocationError> {

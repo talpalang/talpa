@@ -1,26 +1,25 @@
 use super::*;
 use anylize::{AnylizeError, AnylizeWarning};
 use core::fmt::Display;
-use files::CodeLocation;
 use std::error::Error;
 
 #[derive(Clone)]
 pub struct LocationError {
   pub error_type: StateError,
   pub prev_line: Option<String>,
-  pub line: Option<(String, usize, usize)>,
+  pub line: Option<(String, usize, u16)>,
   pub next_line: Option<String>,
-  pub file_name: Option<String>,
+  pub file_name: String,
 }
 
 impl LocationError {
-  pub fn only_file_name(error: impl Into<StateError>, file_name: impl Into<String>) -> Self {
+  pub fn only_file_name(error: impl Into<StateError>, file_name: String) -> Self {
     Self {
       error_type: error.into(),
       prev_line: None,
       line: None,
       next_line: None,
-      file_name: Some(file_name.into()),
+      file_name,
     }
   }
   fn err(&self) -> String {
@@ -28,40 +27,33 @@ impl LocationError {
 
     let err = self.clone();
 
-    match (err.line, self.file_name) {
-      (Some((line, x, y)), file_name) => {
-        output.push(if let Some(name) = file_name {
-          format!("Error in file: {}", name)
-        } else {
-          String::from("Error:")
-        });
+    if let Some((line, x, y)) = err.line {
+      output.push(format!("Error in file: {}", self.file_name));
 
-        if let Some(line) = err.prev_line.clone() {
-          output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
-        }
+      if let Some(line) = err.prev_line.clone() {
+        output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
+      }
 
-        let mut spacing = String::from("");
-        for _ in 0..x + y.to_string().len() + 1 {
-          spacing += " ";
-        }
-        output.push(format!(
-          "{}: {}\n{}^-- {}",
-          y,
-          line.replace("\t", "  "),
-          spacing,
-          err.error_type,
-        ));
+      let mut spacing = String::from("");
+      for _ in 0..x + y.to_string().len() + 1 {
+        spacing += " ";
+      }
+      output.push(format!(
+        "{}: {}\n{}^-- {}",
+        y,
+        line.replace("\t", "  "),
+        spacing,
+        err.error_type,
+      ));
 
-        if let Some(line) = err.next_line.clone() {
-          output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
-        }
+      if let Some(line) = err.next_line.clone() {
+        output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
       }
-      (_, Some(name)) => {
-        output.push(format!("Error in file: {}\n{}", name, err.error_type));
-      }
-      _ => {
-        output.push(String::from("Error:"));
-      }
+    } else {
+      output.push(format!(
+        "Error in file: {}\n{}",
+        self.file_name, err.error_type
+      ));
     }
 
     format!("{}", output.join("\n"))

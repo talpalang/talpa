@@ -1,3 +1,5 @@
+use super::errors::{LocationError, StateError};
+
 /// This is used in meany places to safe the location of code
 ///
 /// Why the index and y?
@@ -18,5 +20,100 @@ pub struct CodeLocation {
 impl CodeLocation {
   pub fn new(index: usize, y: u16) -> Self {
     Self { index, y }
+  }
+}
+
+#[derive(Clone, Debug)]
+pub struct File<'a> {
+  pub bytes: &'a Vec<u8>,
+  pub name: &'a str,
+}
+
+impl<'a> File<'a> {
+  pub fn new(bytes: Vec<u8>, file_name: impl Into<String>) -> Self {
+    let mut mut_bytes = bytes;
+
+    let mut chars_to_remove: Vec<usize> = vec![];
+
+    // Remove all the '\r' from the code because we currently do not support it
+    for (i, c) in mut_bytes.iter().enumerate().rev() {
+      if *c as char == '\r' {
+        chars_to_remove.push(i);
+      }
+    }
+    for i in chars_to_remove {
+      mut_bytes.remove(i);
+    }
+
+    Self {
+      bytes: &mut mut_bytes.clone(),
+      name: &file_name.into(),
+    }
+  }
+
+  pub fn error<T>(
+    &self,
+    error: impl Into<StateError>,
+    location: CodeLocation,
+  ) -> Result<T, LocationError> {
+    let mut index = location.index;
+    let mut prev_line: Vec<u8> = vec![];
+    let mut line: Vec<u8> = vec![];
+    let mut next_line: Vec<u8> = vec![];
+    let mut x = 0;
+
+    if index > 0 {
+      while let Some(c) = self.bytes.get(index) {
+        index -= 1;
+        match *c as char {
+          '\n' => break,
+          _ => line.insert(0, *c),
+        };
+        x += 1;
+      }
+
+      while let Some(c) = self.bytes.get(index) {
+        index -= 1;
+        match *c as char {
+          '\n' => {
+            break;
+          }
+          _ => prev_line.insert(0, *c),
+        }
+      }
+    }
+
+    index = location.index + 1;
+    while let Some(c) = self.bytes.get(index) {
+      index += 1;
+      match *c as char {
+        '\n' => break,
+        _ => line.push(*c),
+      }
+    }
+
+    while let Some(c) = self.bytes.get(index) {
+      index += 1;
+      match *c as char {
+        '\n' => break,
+        _ => next_line.push(*c),
+      }
+    }
+
+    Err(LocationError {
+      error_type: error.into(),
+      prev_line: if prev_line.len() > 0 {
+        Some(String::from_utf8(prev_line).unwrap())
+      } else {
+        None
+      },
+      line: Some((String::from_utf8(line).unwrap(), x, location.y)),
+      next_line: if next_line.len() > 0 {
+        Some(String::from_utf8(next_line).unwrap())
+      } else {
+        None
+      },
+      file_name: self.name.to_string(),
+    })
   }
 }

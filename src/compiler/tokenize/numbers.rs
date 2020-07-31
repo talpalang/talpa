@@ -32,14 +32,14 @@ impl Into<ActionType> for Number {
   }
 }
 
-pub struct NumberParser<'a> {
-  t: &'a mut Tokenizer,
+pub struct NumberParser<'a, 'b> {
+  t: &'b mut Tokenizer<'a>,
   buff: Vec<u8>,
   location: CodeLocation,
 }
 
-impl<'a> NumberParser<'a> {
-  pub fn new_without_starting(t: &'a mut Tokenizer, buff: Vec<u8>) -> Self {
+impl<'a, 'b> NumberParser<'a, 'b> {
+  pub fn new_without_starting(t: &'b mut Tokenizer<'a>, buff: Vec<u8>) -> Self {
     let location = t.last_index_location();
     Self { t, buff, location }
   }

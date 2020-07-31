@@ -26,8 +26,8 @@ impl Into<ActionType> for Variable {
   }
 }
 
-pub fn parse_var<'a>(
-  t: &'a mut Tokenizer,
+pub fn parse_var<'a, 'b>(
+  t: &'b mut Tokenizer<'a>,
   var_type_option: Option<VarType>,
 ) -> Result<Variable, LocationError> {
   let location = t.last_index_location();

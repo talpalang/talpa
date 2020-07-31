@@ -1,6 +1,6 @@
 use super::*;
 use errors::{LocationError, StateError, TokenizeError};
-use files::CodeLocation;
+use files::{CodeLocation, File};
 use function::parse_function;
 use std::collections::HashMap;
 use std::fmt;
@@ -8,8 +8,8 @@ use types::{parse_enum, parse_global_type, parse_struct};
 use utils::MatchString;
 use variable::parse_var;
 
-pub struct Tokenizer {
-  contents: Vec<u8>,
+pub struct Tokenizer<'a> {
+  pub file: &'a File<'a>,
   pub index: usize,
   pub y: u16,
   pub functions: Vec<Function>,
@@ -28,7 +28,7 @@ struct SimpleTokenizer<'a> {
   pub types: &'a Vec<GlobalType>,
 }
 
-impl fmt::Debug for Tokenizer {
+impl<'a> fmt::Debug for Tokenizer<'a> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple_tokenized = SimpleTokenizer {
       functions: &self.functions,
@@ -53,24 +53,12 @@ pub enum DataType<'a> {
   Direct(Vec<u8>),
 }
 
-impl Tokenizer {
-  pub fn tokenize(contents: Vec<u8>) -> Result<Self, LocationError> {
-    let mut chars_to_remove: Vec<usize> = vec![];
-
-    // Remove all the '\r' from the code because we currently do not support it
-    for (i, c) in contents.iter().enumerate().rev() {
-      if *c as char == '\r' {
-        chars_to_remove.push(i);
-      }
-    }
-    for i in chars_to_remove {
-      contents.remove(i);
-    }
-
+impl<'a, 'b> Tokenizer<'a> {
+  pub fn tokenize(file: &'a File<'a>) -> Result<Self, LocationError> {
     let mut tokenizer = Self {
       index: 0,
       y: 1,
-      contents,
+      file,
       functions: vec![],
       vars: vec![],
       structs: vec![],
@@ -82,11 +70,10 @@ impl Tokenizer {
     Ok(tokenizer)
   }
 
-  pub fn error<T, Y>(&self, error: Y) -> Result<T, LocationError>
-  where
-    Y: Into<StateError>,
-  {
-    self.custom_error(error, CodeLocation::new(self.index, self.y))
+  pub fn error<T>(&'b self, error: impl Into<StateError>) -> Result<T, LocationError> {
+    self
+      .file
+      .error(error, CodeLocation::new(self.index, self.y))
   }
 
   pub fn unexpected_char<T>(&self, c: char) -> Result<T, LocationError> {
@@ -97,117 +84,14 @@ impl Tokenizer {
     self.error(TokenizeError::UnexpectedEOF)
   }
 
-  pub fn custom_error<T>(
-    &self,
-    error: impl Into<StateError>,
-    location: CodeLocation,
-  ) -> Result<T, LocationError> {
-    let (original_index, y) = self.last_index();
-    let mut index = original_index;
-    let mut prev_line: Vec<u8> = vec![];
-    let mut line: Vec<u8> = vec![];
-    let mut next_line: Vec<u8> = vec![];
-
-    if index > 0 {
-      while let Some(c) = self.contents.get(index) {
-        match *c as char {
-          '\n' => {
-            index -= 1;
-            break;
-          }
-          _ => line.insert(0, *c),
-        };
-        index -= 1;
-      }
-    }
-
-    let (prev_line, line, next_line, x, y) = {
-      let (use_index, x) = self.last_index();
-
-      let mut line: Vec<u8> = vec![];
-
-      let mut prev_line_index = use_index;
-      while prev_line_index > 0 {
-        match *self.contents.get(prev_line_index).unwrap() {
-          b'\n' => {
-            prev_line_index -= 1;
-            break;
-          }
-          c => {
-            prev_line_index -= 1;
-            line.insert(0, c);
-          }
-        }
-      }
-
-      let mut next_line_index = use_index;
-      while self.contents.len() > next_line_index {
-        match *self.contents.get(prev_line_index).unwrap() {
-          b'\n' => {
-            next_line_index += 1;
-            break;
-          }
-          c => {
-            next_line_index += 1;
-            line.push(c);
-          }
-        }
-      }
-
-      let prev_line: Option<String> = if use_index > x {
-        // Get the previouse line
-        let mut prev_line: Vec<u8> = vec![];
-        while prev_line_index > 0 {
-          match self.contents.get(prev_line_index) {
-            Some(b'\n') => break,
-            None => break,
-            Some(c) => prev_line.insert(0, *c),
-          }
-          prev_line_index -= 1;
-        }
-
-        Some(String::from_utf8(prev_line).unwrap())
-      } else {
-        None
-      };
-
-      let next_line: Option<String> = if self.contents.len() > next_line_index {
-        // Get the next line
-        let mut next_line: Vec<u8> = vec![];
-        while next_line_index > 0 {
-          match self.contents.get(next_line_index) {
-            Some(b'\n') => break,
-            None => break,
-            Some(c) => next_line.push(*c),
-          }
-          next_line_index += 1;
-        }
-
-        Some(String::from_utf8(next_line).unwrap())
-      } else {
-        None
-      };
-
-      (prev_line, String::from_utf8(line).unwrap(), next_line, x, y)
-    };
-
-    Err(LocationError {
-      error_type: error.into(),
-      prev_line,
-      line: Some((line, x, y)),
-      next_line,
-      file_name: None,
-    })
-  }
-
-  pub fn last_char<'a>(&'a self) -> char {
+  pub fn last_char(&self) -> char {
     if self.index == 0 {
       // There aren't any chars read yet return 0
       // This is not really anywhere used so we can better return null than to return an option
       // Just overcomplicates things when it issn't needed
       return 0 as char;
     }
-    return *self.contents.get(self.index - 1).unwrap() as char;
+    return *self.file.bytes.get(self.index - 1).unwrap() as char;
   }
 
   pub fn must_next_char(&mut self) -> Result<char, LocationError> {
@@ -219,7 +103,7 @@ impl Tokenizer {
   }
 
   pub fn next_char(&mut self) -> Option<char> {
-    let letter = *self.contents.get(self.index)? as char;
+    let letter = *self.file.bytes.get(self.index)? as char;
 
     self.index += 1;
     if letter == '\n' {
@@ -232,11 +116,11 @@ impl Tokenizer {
     }
 
     // check for next forward slash
-    match *self.contents.get(self.index)? as char {
+    match *self.file.bytes.get(self.index)? as char {
       '/' => {
         // detected single line comment
         loop {
-          let next = *self.contents.get(self.index)? as char;
+          let next = *self.file.bytes.get(self.index)? as char;
           self.index += 1;
 
           // check for newline (end of comment)
@@ -249,7 +133,7 @@ impl Tokenizer {
       '*' => {
         // detected multi-line comment
         loop {
-          match *self.contents.get(self.index)? as char {
+          match *self.file.bytes.get(self.index)? as char {
             '\n' => {
               self.y += 1;
               self.index += 1;
@@ -258,7 +142,7 @@ impl Tokenizer {
               self.index += 1;
 
               // * detected
-              if let Some(b'/') = self.contents.get(self.index) {
+              if let Some(b'/') = self.file.bytes.get(self.index) {
                 // */ detected
                 self.index += 1;
 
@@ -275,8 +159,8 @@ impl Tokenizer {
     }
   }
 
-  fn seek_next_char(&mut self) -> Option<char> {
-    let letter = self.contents.get(self.index)?;
+  fn seek_next_char(&'b self) -> Option<char> {
+    let letter = self.file.bytes.get(self.index)?;
     Some(*letter as char)
   }
 
@@ -296,7 +180,7 @@ impl Tokenizer {
     }
   }
 
-  pub fn next_while(&mut self, chars: &'static str) -> Option<char> {
+  pub fn next_while(&'b mut self, chars: &'static str) -> Option<char> {
     while let Some(c) = self.next_char() {
       if !chars.contains(c) {
         return Some(c);
@@ -306,7 +190,7 @@ impl Tokenizer {
   }
 
   /// Tries to match something
-  pub fn try_match<'a, T>(&mut self, options: Vec<&'a T>) -> Option<&'a T>
+  pub fn try_match<T>(&mut self, options: Vec<&'b T>) -> Option<&'b T>
   where
     T: MatchString,
   {
@@ -314,7 +198,7 @@ impl Tokenizer {
       return None;
     }
 
-    let mut meta_map: HashMap<&'static str, &'a T> = HashMap::with_capacity(options.len());
+    let mut meta_map: HashMap<&'static str, &'b T> = HashMap::with_capacity(options.len());
     let mut options_vec: Vec<&str> = vec![];
 
     for option in options {
@@ -372,7 +256,7 @@ impl Tokenizer {
     None
   }
 
-  fn parse_nothing(&mut self) -> Result<(), LocationError> {
+  fn parse_nothing(&'b mut self) -> Result<(), LocationError> {
     if let None = self.next_while(" \n\t") {
       return Ok(());
     }
@@ -429,7 +313,7 @@ impl Tokenizer {
 
   /// This return the last location
   /// return values: index, y
-  pub fn last_index(&self) -> (usize, u16) {
+  pub fn last_index(&'b self) -> (usize, u16) {
     if self.index == 0 {
       return (0, 0);
     }

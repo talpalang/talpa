@@ -1,14 +1,29 @@
 mod compiler;
 
-use compiler::{
-    AnilizedTokens, CodeLocation, Compiler, CompilerProps, Lang, LocationError, Options,
-};
+use compiler::{AnilizedTokens, Compiler, CompilerProps, Lang, LocationError, Options};
 use std::fs;
+use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
+#[derive(Clone)]
 struct CLI {
     warnings: usize,
     errors: usize,
     options: Options,
+}
+
+impl Deref for CLI {
+    type Target = CLI;
+
+    fn deref(&self) -> &Self::Target {
+        &self
+    }
+}
+
+impl DerefMut for CLI {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self
+    }
 }
 
 impl CLI {
@@ -22,7 +37,7 @@ impl CLI {
 }
 
 impl CompilerProps for CLI {
-    fn open_file(&mut self, file_name: String) -> Result<Vec<u8>, String> {
+    fn open_file(&mut self, file_name: &str) -> Result<Vec<u8>, String> {
         match fs::read(file_name) {
             Err(err) => Err(format!("{}", err)),
             Ok(c) => Ok(c),
@@ -50,20 +65,22 @@ impl CompilerProps for CLI {
 }
 
 fn main() {
-    let mut cli = CLI::new(Options {
+    let cli = CLI::new(Options {
         lang: Some(Lang::JS),
         debug: true,
     });
-    Compiler::start("example.tp", &mut cli);
+    Compiler::start("example.tp", Rc::new(cli));
 
-    if cli.errors > 0 {
-        println!("Unable to compile file, {} errors occurred", cli.errors);
+    let errors = cli.errors;
+    if errors > 0 {
+        println!("Unable to compile file, {} errors occurred", errors);
         std::process::exit(1);
     }
 
-    if cli.warnings == 0 {
+    let warnings = cli.warnings;
+    if warnings == 0 {
         println!("Successfully compiled code");
     } else {
-        println!("Successfully compiled code with {} warnings", cli.warnings);
+        println!("Successfully compiled code with {} warnings", warnings);
     }
 }

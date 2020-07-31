@@ -8,8 +8,10 @@ use anylize::anilize_tokens;
 pub use anylize::AnilizedTokens;
 pub use errors::LocationError;
 use errors::TokenizeError;
-pub use files::CodeLocation;
+pub use files::{CodeLocation, File};
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 use target::generate;
 pub use target::Lang;
 use tokenize::Tokenizer;
@@ -23,7 +25,7 @@ pub struct Options {
 
 pub trait CompilerProps {
   /// This requests to open a file
-  fn open_file(&mut self, file_name: String) -> Result<Vec<u8>, String>;
+  fn open_file(&mut self, file_name: &str) -> Result<Vec<u8>, String>;
 
   /// The compiler will asks compiler options via this function
   fn get_options(&self) -> Options {
@@ -41,47 +43,58 @@ pub trait CompilerProps {
 
   /// Once the tokens of a file have been anylized they will be send here
   /// Note: Options.debug must be enabled
-  fn debug_formatted_tokens(&mut self, file_name: String, _: AnilizedTokens) {}
+  fn debug_formatted_tokens(&mut self, _: String, _: AnilizedTokens) {}
   /// Once output is generated this function will be called
   /// Note: Options.debug must be enabled
-  fn debug_parsed_output(&mut self, file_name: String, _: String) {}
+  fn debug_parsed_output(&mut self, _: String, _: String) {}
 }
 
-pub struct Compiler<'a> {
+pub struct Compiler<T>
+where
+  T: CompilerProps + Deref + DerefMut,
+{
   opened_files: HashMap<String, Vec<u8>>,
   options: Options,
-  props: &'a mut (dyn CompilerProps + 'a),
+  props: Rc<T>,
 }
 
-impl<'a> Compiler<'a> {
-  pub fn open_file(&mut self, file_name: String) -> Result<Vec<u8>, LocationError> {
-    match self.props.open_file(file_name) {
-      Err(error) => Err(LocationError::only_file_name(
-        TokenizeError::UnableToOpenFile(file_name),
-        file_name,
-      )),
-      Ok(v) => Ok(v),
-    }
+impl<T> Compiler<T>
+where
+  T: CompilerProps + Deref + DerefMut,
+{
+  pub fn open_file(&self, file_name: &str) -> Result<File, LocationError> {
+    let bytes = match self.props.open_file(file_name) {
+      Err(_) => {
+        return Err(LocationError::only_file_name(
+          TokenizeError::UnableToOpenFile(file_name.to_string()),
+          file_name.to_string(),
+        ))
+      }
+      Ok(v) => v,
+    };
+    Ok(File::new(bytes, file_name))
   }
 
-  pub fn start(entry_file: impl Into<String>, props: &'a mut impl CompilerProps) {
+  pub fn start<'a>(entry_file_name: &str, props: Rc<T>)
+  where
+    T: CompilerProps + Deref + DerefMut,
+  {
+    let options = props.get_options();
     let mut c = Self {
       opened_files: HashMap::new(),
-      options: props.get_options(),
-      props: &mut *props,
+      options,
+      props,
     };
 
-    let file_name = entry_file.into();
-
-    let file_data = match c.open_file(file_name) {
+    let entry_file = match c.open_file(entry_file_name) {
       Ok(val) => val,
       Err(err) => {
-        c.props.error(err);
+        c.props.clone().error(err);
         return;
       }
     };
 
-    let res = match Tokenizer::tokenize(file_data) {
+    let res = match Tokenizer::tokenize(&entry_file) {
       Err(err) => {
         c.props.error(err);
         return;
@@ -89,27 +102,25 @@ impl<'a> Compiler<'a> {
       Ok(v) => v,
     };
 
-    let (formatted_res, anilize_res) = anilize_tokens(&res);
-
-    // We don't need the res data anymore from here on wasted memory.
-    drop(res);
+    let file_name = res.file.name.to_string();
+    let (formatted_res, anilize_res) = anilize_tokens(res);
 
     for warning in anilize_res.warnings {
       c.props
-        .warning(LocationError::only_file_name(warning, file_name));
+        .warning(LocationError::only_file_name(warning, file_name.clone()));
     }
 
     if anilize_res.errors.len() > 0 {
       for error in anilize_res.errors {
         c.props
-          .error(LocationError::only_file_name(error, file_name));
+          .error(LocationError::only_file_name(error, file_name.clone()));
       }
       return;
     }
 
     if c.options.debug {
       c.props
-        .debug_formatted_tokens(file_name, formatted_res.clone());
+        .debug_formatted_tokens(entry_file.name.to_string(), formatted_res.clone());
     }
 
     if let Some(lang) = c.options.lang {
@@ -122,7 +133,8 @@ impl<'a> Compiler<'a> {
       };
 
       if c.options.debug {
-        c.props.debug_parsed_output(file_name, src)
+        c.props
+          .debug_parsed_output(entry_file.name.clone().to_string(), src)
       }
     }
   }

@@ -67,8 +67,8 @@ impl Into<ActionType> for ActionFunctionCall {
   }
 }
 
-pub struct ParseAction<'a> {
-  t: &'a mut Tokenizer,
+pub struct ParseAction<'a, 'b> {
+  t: &'b mut Tokenizer<'a>,
   res: Option<Action>,
   action_to_expect: ActionToExpect,
 }
@@ -184,9 +184,9 @@ impl Into<ActionType> for ActionFor {
   }
 }
 
-impl<'a> ParseAction<'a> {
+impl<'a, 'b> ParseAction<'a, 'b> {
   pub fn start(
-    t: &'a mut Tokenizer,
+    t: &'b mut Tokenizer<'a>,
     go_back_one: bool,
     action_to_expect: ActionToExpect,
   ) -> Result<Action, LocationError> {

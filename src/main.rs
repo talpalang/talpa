@@ -22,7 +22,7 @@ impl Deref for CLI {
 
 impl DerefMut for CLI {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self
+        self
     }
 }
 

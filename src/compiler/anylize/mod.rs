@@ -85,8 +85,8 @@ impl AnylizeResults {
 }
 
 #[derive(Clone)]
-pub struct AnilizedTokens<'a> {
-  file: &'a File<'a>,
+pub struct AnilizedTokens {
+  file: File,
   pub functions: HashMap<String, Function>,
   pub vars: HashMap<String, Variable>,
   pub structs: HashMap<String, Struct>,
@@ -96,7 +96,7 @@ pub struct AnilizedTokens<'a> {
 
 #[derive(Debug)]
 struct SimpleAnilizedTokens<'a> {
-  pub file: &'a File<'a>,
+  pub file: &'a File,
   pub functions: &'a HashMap<String, Function>,
   pub vars: &'a HashMap<String, Variable>,
   pub structs: &'a HashMap<String, Struct>,
@@ -104,7 +104,7 @@ struct SimpleAnilizedTokens<'a> {
   pub types: &'a HashMap<String, GlobalType>,
 }
 
-impl<'a> fmt::Debug for AnilizedTokens<'a> {
+impl<'a> fmt::Debug for AnilizedTokens {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple = SimpleAnilizedTokens {
       file: &self.file,
@@ -245,7 +245,7 @@ impl GetName for GlobalType {
   }
 }
 
-impl<'a> AnilizedTokens<'a> {
+impl AnilizedTokens {
   fn anilize(&mut self) -> AnylizeResults {
     let mut res = AnylizeResults::new();
 

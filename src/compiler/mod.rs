@@ -9,8 +9,8 @@ pub use anylize::AnilizedTokens;
 pub use errors::LocationError;
 use errors::TokenizeError;
 pub use files::{CodeLocation, File};
+use std::cell::RefCell;
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use target::generate;
 pub use target::Lang;
@@ -49,37 +49,44 @@ pub trait CompilerProps {
   fn debug_parsed_output(&mut self, _: String, _: String) {}
 }
 
-pub struct Compiler<T>
-where
-  T: CompilerProps + Deref + DerefMut,
-{
-  opened_files: HashMap<String, Vec<u8>>,
+pub struct Compiler {
+  opened_files: HashMap<String, Rc<Vec<u8>>>,
   options: Options,
-  props: Rc<T>,
+  props: Rc<RefCell<dyn CompilerProps>>,
 }
 
-impl<T> Compiler<T>
-where
-  T: CompilerProps + Deref + DerefMut,
-{
-  pub fn open_file(&self, file_name: &str) -> Result<File, LocationError> {
-    let bytes = match self.props.open_file(file_name) {
-      Err(_) => {
-        return Err(LocationError::only_file_name(
-          TokenizeError::UnableToOpenFile(file_name.to_string()),
-          file_name.to_string(),
-        ))
-      }
-      Ok(v) => v,
-    };
-    Ok(File::new(bytes, file_name))
+impl Compiler {
+  pub fn open_file(&mut self, file_name: &str) -> Result<File, LocationError> {
+    if let Some(bytes) = self.opened_files.get(file_name) {
+      Ok(File {
+        bytes: Rc::clone(bytes),
+        name: file_name.to_string(),
+      })
+    } else {
+      let bytes = match self.props.borrow_mut().open_file(file_name) {
+        Err(_) => {
+          return Err(LocationError::only_file_name(
+            TokenizeError::UnableToOpenFile(file_name.to_string()),
+            file_name.to_string(),
+          ))
+        }
+        Ok(v) => v,
+      };
+
+      let file = File::new(bytes, file_name);
+      self
+        .opened_files
+        .insert(file_name.to_string(), Rc::clone(&file.bytes));
+      Ok(file)
+    }
   }
 
-  pub fn start<'a>(entry_file_name: &str, props: Rc<T>)
-  where
-    T: CompilerProps + Deref + DerefMut,
-  {
-    let options = props.get_options();
+  pub fn start<'a>(entry_file_name: &str, props: Rc<RefCell<dyn CompilerProps>>) {
+    let options = {
+      let props = props.borrow_mut();
+      props.get_options()
+    };
+
     let mut c = Self {
       opened_files: HashMap::new(),
       options,
@@ -89,30 +96,32 @@ where
     let entry_file = match c.open_file(entry_file_name) {
       Ok(val) => val,
       Err(err) => {
-        c.props.clone().error(err);
+        c.props.borrow_mut().error(err);
         return;
       }
     };
 
-    let res = match Tokenizer::tokenize(&entry_file) {
+    let res = match Tokenizer::tokenize(entry_file) {
       Err(err) => {
-        c.props.error(err);
+        c.props.borrow_mut().error(err);
         return;
       }
       Ok(v) => v,
     };
 
-    let file_name = res.file.name.to_string();
+    let file_name = res.file.name.clone();
     let (formatted_res, anilize_res) = anilize_tokens(res);
 
     for warning in anilize_res.warnings {
       c.props
+        .borrow_mut()
         .warning(LocationError::only_file_name(warning, file_name.clone()));
     }
 
     if anilize_res.errors.len() > 0 {
       for error in anilize_res.errors {
         c.props
+          .borrow_mut()
           .error(LocationError::only_file_name(error, file_name.clone()));
       }
       return;
@@ -120,13 +129,14 @@ where
 
     if c.options.debug {
       c.props
-        .debug_formatted_tokens(entry_file.name.to_string(), formatted_res.clone());
+        .borrow_mut()
+        .debug_formatted_tokens(file_name.clone(), formatted_res.clone());
     }
 
     if let Some(lang) = c.options.lang {
       let src = match generate(formatted_res, lang) {
         Err(err) => {
-          c.props.error(err);
+          c.props.borrow_mut().error(err);
           return;
         }
         Ok(v) => v,
@@ -134,7 +144,8 @@ where
 
       if c.options.debug {
         c.props
-          .debug_parsed_output(entry_file.name.clone().to_string(), src)
+          .borrow_mut()
+          .debug_parsed_output(file_name.clone().to_string(), src)
       }
     }
   }

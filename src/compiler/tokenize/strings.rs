@@ -14,7 +14,7 @@ impl Into<ActionType> for String_ {
   }
 }
 
-pub fn parse_static_str<'a>(t: &'a mut Tokenizer) -> Result<String_, LocationError> {
+pub fn parse_static_str(t: &mut Tokenizer) -> Result<String_, LocationError> {
   let mut res = String_ {
     location: t.last_index_location(),
     content: String::new(),

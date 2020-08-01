@@ -14,7 +14,7 @@ use super::files;
 pub use action::{Action, ActionAssigment, ActionFor, ActionFunctionCall, ActionType, ActionWhile};
 pub use actions::Actions;
 pub use function::Function;
-pub use globals::{DataType, Tokenizer};
+pub use globals::Tokenizer;
 pub use numbers::{Number, NumberType};
 pub use statics::Keywords;
 pub use strings::String_;

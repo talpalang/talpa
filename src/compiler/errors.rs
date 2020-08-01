@@ -79,7 +79,6 @@ pub enum StateError {
   Tokenize(TokenizeError),
   AnylizeError(AnylizeError),
   AnylizeWarning(AnylizeWarning),
-  IO(IOError),
   // Target(TargetError),
 }
 
@@ -101,7 +100,6 @@ impl Display for StateError {
       Self::Tokenize(error) => write!(f, "{}", error),
       Self::AnylizeError(error) => write!(f, "{}", error),
       Self::AnylizeWarning(error) => write!(f, "{}", error),
-      Self::IO(error) => write!(f, "IO error: {}", error),
       // Self::Target(error) => write!(f, "{}", error),
     }
   }
@@ -134,25 +132,6 @@ impl Display for TokenizeError {
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
       Self::Custom(error) => write!(f, "{}", error),
-    }
-  }
-}
-
-#[derive(Clone)]
-pub enum IOError {
-  IO(String),
-}
-
-impl Into<StateError> for IOError {
-  fn into(self) -> StateError {
-    StateError::IO(self)
-  }
-}
-
-impl Display for IOError {
-  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::IO(error) => write!(f, "{}", error),
     }
   }
 }

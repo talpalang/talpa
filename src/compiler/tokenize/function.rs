@@ -14,10 +14,7 @@ pub struct Function {
   pub body: Actions,
 }
 
-pub fn parse_function<'a>(
-  t: &mut Tokenizer<'a>,
-  anonymous: bool,
-) -> Result<Function, LocationError> {
+pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, LocationError> {
   let location = t.last_index_location();
 
   // Parse the function name

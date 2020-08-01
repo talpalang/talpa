@@ -14,7 +14,7 @@ impl Actions {
   }
 }
 
-pub fn parse_actions<'a>(t: &mut Tokenizer<'a>) -> Result<Actions, LocationError> {
+pub fn parse_actions(t: &mut Tokenizer) -> Result<Actions, LocationError> {
   let mut res = Actions::empty();
 
   loop {

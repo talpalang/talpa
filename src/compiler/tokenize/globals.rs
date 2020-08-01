@@ -8,8 +8,8 @@ use types::{parse_enum, parse_global_type, parse_struct};
 use utils::MatchString;
 use variable::parse_var;
 
-pub struct Tokenizer<'a> {
-  pub file: &'a File<'a>,
+pub struct Tokenizer {
+  pub file: File,
   pub index: usize,
   pub y: u16,
   pub functions: Vec<Function>,
@@ -28,7 +28,7 @@ struct SimpleTokenizer<'a> {
   pub types: &'a Vec<GlobalType>,
 }
 
-impl<'a> fmt::Debug for Tokenizer<'a> {
+impl<'a> fmt::Debug for Tokenizer {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple_tokenized = SimpleTokenizer {
       functions: &self.functions,
@@ -41,20 +41,8 @@ impl<'a> fmt::Debug for Tokenizer<'a> {
   }
 }
 
-pub enum DataType<'a> {
-  /// Use a file as input to start reading from
-  File(&'a str),
-
-  /// Parse directly from bytes
-  /// Currently only used for testing so we allow it to be dead code for now
-  ///
-  /// TODO: Let this not be dead code :)
-  #[allow(dead_code)]
-  Direct(Vec<u8>),
-}
-
-impl<'a, 'b> Tokenizer<'a> {
-  pub fn tokenize(file: &'a File<'a>) -> Result<Self, LocationError> {
+impl Tokenizer {
+  pub fn tokenize(file: File) -> Result<Self, LocationError> {
     let mut tokenizer = Self {
       index: 0,
       y: 1,
@@ -70,7 +58,7 @@ impl<'a, 'b> Tokenizer<'a> {
     Ok(tokenizer)
   }
 
-  pub fn error<T>(&'b self, error: impl Into<StateError>) -> Result<T, LocationError> {
+  pub fn error<T>(&self, error: impl Into<StateError>) -> Result<T, LocationError> {
     self
       .file
       .error(error, CodeLocation::new(self.index, self.y))
@@ -159,7 +147,7 @@ impl<'a, 'b> Tokenizer<'a> {
     }
   }
 
-  fn seek_next_char(&'b self) -> Option<char> {
+  fn seek_next_char(&self) -> Option<char> {
     let letter = self.file.bytes.get(self.index)?;
     Some(*letter as char)
   }
@@ -180,7 +168,7 @@ impl<'a, 'b> Tokenizer<'a> {
     }
   }
 
-  pub fn next_while(&'b mut self, chars: &'static str) -> Option<char> {
+  pub fn next_while(&mut self, chars: &'static str) -> Option<char> {
     while let Some(c) = self.next_char() {
       if !chars.contains(c) {
         return Some(c);
@@ -190,7 +178,7 @@ impl<'a, 'b> Tokenizer<'a> {
   }
 
   /// Tries to match something
-  pub fn try_match<T>(&mut self, options: Vec<&'b T>) -> Option<&'b T>
+  pub fn try_match<'a, T>(&mut self, options: Vec<&'a T>) -> Option<&'a T>
   where
     T: MatchString,
   {
@@ -198,7 +186,7 @@ impl<'a, 'b> Tokenizer<'a> {
       return None;
     }
 
-    let mut meta_map: HashMap<&'static str, &'b T> = HashMap::with_capacity(options.len());
+    let mut meta_map: HashMap<&'static str, &'a T> = HashMap::with_capacity(options.len());
     let mut options_vec: Vec<&str> = vec![];
 
     for option in options {
@@ -256,7 +244,7 @@ impl<'a, 'b> Tokenizer<'a> {
     None
   }
 
-  fn parse_nothing(&'b mut self) -> Result<(), LocationError> {
+  fn parse_nothing(&mut self) -> Result<(), LocationError> {
     if let None = self.next_while(" \n\t") {
       return Ok(());
     }
@@ -313,7 +301,7 @@ impl<'a, 'b> Tokenizer<'a> {
 
   /// This return the last location
   /// return values: index, y
-  pub fn last_index(&'b self) -> (usize, u16) {
+  pub fn last_index(&self) -> (usize, u16) {
     if self.index == 0 {
       return (0, 0);
     }

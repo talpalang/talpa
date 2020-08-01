@@ -1,4 +1,5 @@
 use super::errors::{LocationError, StateError};
+use std::rc::Rc;
 
 /// This is used in meany places to safe the location of code
 ///
@@ -8,9 +9,13 @@ use super::errors::{LocationError, StateError};
 /// 2. How much memory / cpu power does it cost to know these locations?
 /// 3. How easially can we get from this to debug information with code?
 ///
-/// 1. This solution is only 64 + 16 bits per location so pretty memory efficent, we could go for only a index but that would have drawbacks in other points.
+/// 1. This solution is only 64 + 16 bits per location so pretty memory efficient
 ///
-/// 2. For
+/// 2. Pretty low the compiler only has to track y and index this way so every char iteration only
+/// cost 1 variable to update unless it's a newline in that case 2. This is pretty memory and cpu efficient
+///
+/// 3. Because we already know the line where location was created (y) we don't have to count every \n till the index.
+/// Becuase of that we only have to seek 1 line backwards and forwards to get a view of the 3 lines an location was made on
 #[derive(Debug, Clone)]
 pub struct CodeLocation {
   pub index: usize,
@@ -24,12 +29,12 @@ impl CodeLocation {
 }
 
 #[derive(Clone, Debug)]
-pub struct File<'a> {
-  pub bytes: &'a Vec<u8>,
-  pub name: &'a str,
+pub struct File {
+  pub bytes: Rc<Vec<u8>>,
+  pub name: String,
 }
 
-impl<'a> File<'a> {
+impl File {
   pub fn new(bytes: Vec<u8>, file_name: impl Into<String>) -> Self {
     let mut mut_bytes = bytes;
 
@@ -46,8 +51,8 @@ impl<'a> File<'a> {
     }
 
     Self {
-      bytes: &mut mut_bytes.clone(),
-      name: &file_name.into(),
+      bytes: Rc::new(mut_bytes),
+      name: file_name.into(),
     }
   }
 

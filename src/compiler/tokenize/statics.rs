@@ -22,7 +22,7 @@ impl NameBuilder {
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }
-  pub fn is_number<'a, 'b>(&self, t: &'b mut Tokenizer<'a>) -> Option<NumberParser<'a, 'b>> {
+  pub fn is_number<'a, 'b>(&self, t: &'a mut Tokenizer) -> Option<NumberParser<'a>> {
     for letter in &self.0 {
       match *letter as char {
         '.' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {}
@@ -32,7 +32,7 @@ impl NameBuilder {
     let parser = NumberParser::new_without_starting(t, self.0.clone());
     Some(parser)
   }
-  pub fn to_string<'a>(&self, t: &'a Tokenizer<'a>) -> Result<String, LocationError> {
+  pub fn to_string<'a>(&self, t: &'a Tokenizer) -> Result<String, LocationError> {
     if self.len() == 0 {
       return Ok(String::new());
     }

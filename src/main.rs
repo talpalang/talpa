@@ -1,6 +1,7 @@
 mod compiler;
 
 use compiler::{AnilizedTokens, Compiler, CompilerProps, Lang, LocationError, Options};
+use std::cell::RefCell;
 use std::fs;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -65,19 +66,20 @@ impl CompilerProps for CLI {
 }
 
 fn main() {
-    let cli = CLI::new(Options {
+    let cli = Rc::new(RefCell::new(CLI::new(Options {
         lang: Some(Lang::JS),
         debug: true,
-    });
-    Compiler::start("example.tp", Rc::new(cli));
+    })));
+    let cli_clone = Rc::clone(&cli);
+    Compiler::start("example.tp", cli);
 
-    let errors = cli.errors;
+    let errors = cli_clone.borrow().errors;
     if errors > 0 {
         println!("Unable to compile file, {} errors occurred", errors);
         std::process::exit(1);
     }
 
-    let warnings = cli.warnings;
+    let warnings = cli_clone.borrow().warnings;
     if warnings == 0 {
         println!("Successfully compiled code");
     } else {

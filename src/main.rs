@@ -67,7 +67,7 @@ impl CompilerProps for CLI {
 
 fn main() {
     let cli = Rc::new(RefCell::new(CLI::new(Options {
-        lang: Some(Lang::JS),
+        lang: Some(Lang::Go),
         debug: true,
     })));
     let cli_clone = Rc::clone(&cli);

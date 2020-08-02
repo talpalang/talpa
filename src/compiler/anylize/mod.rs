@@ -9,46 +9,42 @@ use files::File;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use tokenize::{Enum, Function, GlobalType, Keywords, Struct, TypeType, Variable};
-use utils::{is_camel_case, is_snake_case, GetName};
+use utils::{is_camel_case, is_snake_case, GetLocation, GetName};
 
 trait AddToAnylizeResults {
   fn add(self, add_to: &mut AnylizeResults);
 }
 
 #[derive(Clone)]
-pub enum AnylizeWarning {
+pub enum AnylizeErrAndWarns {
+  // Warnings
   NameShouldBeCamelCase,
   NameShouldBeSnakeCase,
   EmptyEnum,
-}
 
-impl Display for AnylizeWarning {
-  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
-      Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
-      Self::EmptyEnum => write!(f, "Empty enum"),
-    }
-  }
-}
-
-impl AddToAnylizeResults for AnylizeWarning {
-  fn add(self, add_to: &mut AnylizeResults) {
-    add_to.warnings.push(self);
-  }
-}
-
-#[derive(Clone)]
-pub enum AnylizeError {
+  // Errors
   NoName,
   NameAlreadyExists,
   AlreadyDefined,
   KeywordAsName,
 }
 
-impl Display for AnylizeError {
+impl AnylizeErrAndWarns {
+  fn is_warning(&self) -> bool {
+    match self {
+      Self::NameShouldBeCamelCase | Self::NameShouldBeSnakeCase | Self::EmptyEnum => true,
+      Self::NoName | Self::NameAlreadyExists | Self::AlreadyDefined | Self::KeywordAsName => false,
+    }
+  }
+}
+
+impl Display for AnylizeErrAndWarns {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
+      Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
+      Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
+      Self::EmptyEnum => write!(f, "Empty enum"),
+
       Self::AlreadyDefined => write!(f, "Already defined"),
       Self::NoName => write!(f, "No name provided"),
       Self::NameAlreadyExists => write!(f, "Name already exsits"),
@@ -57,30 +53,27 @@ impl Display for AnylizeError {
   }
 }
 
-impl AddToAnylizeResults for AnylizeError {
-  fn add(self, add_to: &mut AnylizeResults) {
-    add_to.errors.push(self);
-  }
-}
-
 pub struct AnylizeResults {
-  pub warnings: Vec<AnylizeWarning>,
-  pub errors: Vec<AnylizeError>,
+  file: File,
+  pub warnings: Vec<LocationError>,
+  pub errors: Vec<LocationError>,
 }
 
 impl AnylizeResults {
-  fn new() -> Self {
+  fn new(file: File) -> Self {
     Self {
+      file,
       warnings: vec![],
       errors: vec![],
     }
   }
-  fn add(&mut self, item: impl AddToAnylizeResults) {
-    item.add(self);
-  }
-  fn merge(&mut self, merge_with: &mut Self) {
-    self.errors.append(&mut merge_with.errors);
-    self.warnings.append(&mut merge_with.warnings);
+  fn add(&mut self, item: AnylizeErrAndWarns, location: CodeLocation) {
+    let error = self.file.must_error(item.clone(), location);
+    if item.is_warning() {
+      self.warnings.push(error);
+    } else {
+      self.errors.push(error);
+    }
   }
 }
 
@@ -119,37 +112,46 @@ impl<'a> fmt::Debug for AnilizedTokens {
 }
 
 pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) {
-  let mut anilized_res = AnylizeResults::new();
-
   let file = tokenizer.file;
+
+  let mut anilized_res = AnylizeResults::new(file.clone());
 
   let mut used_keys: HashSet<String> = HashSet::new();
 
-  let (functions, mut functions_res) = array_into_hash_map(
+  let functions = array_into_hash_map(
     tokenizer.functions.clone(),
     &mut used_keys,
     SnakeOrCamel::Snake,
+    &mut anilized_res,
   );
-  anilized_res.merge(&mut functions_res);
 
-  let (vars, mut vars_res) =
-    array_into_hash_map(tokenizer.vars.clone(), &mut used_keys, SnakeOrCamel::Snake);
-  anilized_res.merge(&mut vars_res);
+  let vars = array_into_hash_map(
+    tokenizer.vars.clone(),
+    &mut used_keys,
+    SnakeOrCamel::Snake,
+    &mut anilized_res,
+  );
 
-  let (structs, mut structs_res) = array_into_hash_map(
+  let structs = array_into_hash_map(
     tokenizer.structs.clone(),
     &mut used_keys,
     SnakeOrCamel::Camel,
+    &mut anilized_res,
   );
-  anilized_res.merge(&mut structs_res);
 
-  let (enums, mut enums_res) =
-    array_into_hash_map(tokenizer.enums.clone(), &mut used_keys, SnakeOrCamel::Camel);
-  anilized_res.merge(&mut enums_res);
+  let enums = array_into_hash_map(
+    tokenizer.enums.clone(),
+    &mut used_keys,
+    SnakeOrCamel::Camel,
+    &mut anilized_res,
+  );
 
-  let (types, mut types_res) =
-    array_into_hash_map(tokenizer.types.clone(), &mut used_keys, SnakeOrCamel::Camel);
-  anilized_res.merge(&mut types_res);
+  let types = array_into_hash_map(
+    tokenizer.types.clone(),
+    &mut used_keys,
+    SnakeOrCamel::Camel,
+    &mut anilized_res,
+  );
 
   let mut res = AnilizedTokens {
     file,
@@ -159,7 +161,7 @@ pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) 
     enums,
     types,
   };
-  anilized_res.merge(&mut res.anilize());
+  res.anilize(&mut anilized_res);
 
   (res, anilized_res)
 }
@@ -173,38 +175,38 @@ fn array_into_hash_map<T>(
   data: Vec<T>,
   used_keys: &mut HashSet<String>,
   name_should_be: SnakeOrCamel,
-) -> (HashMap<String, T>, AnylizeResults)
+  anilized_res: &mut AnylizeResults,
+) -> HashMap<String, T>
 where
-  T: GetName,
+  T: GetName + GetLocation,
 {
-  let mut anilized_res = AnylizeResults::new();
   let mut res: HashMap<String, T> = HashMap::new();
   for item in data {
     let name = if let Some(name) = item.name() {
       name
     } else {
-      anilized_res.add(AnylizeError::NoName);
+      anilized_res.add(AnylizeErrAndWarns::NoName, item.location());
       continue;
     };
 
     if used_keys.contains(&name) {
-      anilized_res.add(AnylizeError::NameAlreadyExists);
+      anilized_res.add(AnylizeErrAndWarns::NameAlreadyExists, item.location());
       continue;
     }
 
     if Keywords::is_keyword(&name) {
-      anilized_res.add(AnylizeError::KeywordAsName);
+      anilized_res.add(AnylizeErrAndWarns::KeywordAsName, item.location());
       continue;
     }
 
     if let SnakeOrCamel::Snake = name_should_be {
       if !is_snake_case(&name) {
-        anilized_res.add(AnylizeWarning::NameShouldBeSnakeCase);
+        anilized_res.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, item.location());
         continue;
       }
     } else {
       if !is_camel_case(&name) {
-        anilized_res.add(AnylizeWarning::NameShouldBeCamelCase);
+        anilized_res.add(AnylizeErrAndWarns::NameShouldBeCamelCase, item.location());
         continue;
       }
     }
@@ -212,12 +214,19 @@ where
     used_keys.insert(name.clone());
     res.insert(name, item);
   }
-  (res, anilized_res)
+
+  res
 }
 
 impl GetName for Function {
   fn name(&self) -> Option<String> {
     self.name.clone()
+  }
+}
+
+impl GetLocation for Function {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
   }
 }
 
@@ -227,9 +236,21 @@ impl GetName for Variable {
   }
 }
 
+impl GetLocation for Variable {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 impl GetName for Struct {
   fn name(&self) -> Option<String> {
     self.name.clone()
+  }
+}
+
+impl GetLocation for Struct {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
   }
 }
 
@@ -239,34 +260,44 @@ impl GetName for Enum {
   }
 }
 
+impl GetLocation for Enum {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 impl GetName for GlobalType {
   fn name(&self) -> Option<String> {
     Some(self.name.clone())
   }
 }
 
-impl AnilizedTokens {
-  fn anilize(&mut self) -> AnylizeResults {
-    let mut res = AnylizeResults::new();
+impl GetLocation for GlobalType {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
 
+impl AnilizedTokens {
+  fn anilize(&mut self, res: &mut AnylizeResults) {
     for (_, function) in self.functions.clone() {
       if function.args.len() > 0 {
         // check the function arguments
         let mut used_arg_names: Vec<String> = vec![];
         for (name, arg) in function.args {
           if used_arg_names.contains(&name) {
-            res.add(AnylizeError::AlreadyDefined);
+            res.add(AnylizeErrAndWarns::AlreadyDefined, arg.location.clone());
           } else {
             used_arg_names.push(name);
           }
-          self.check_type(arg.type_, &mut res);
+          self.check_type(arg.type_, res);
         }
       }
     }
 
     for (_, enum_) in self.enums.clone() {
       if enum_.fields.len() == 0 {
-        res.add(AnylizeWarning::EmptyEnum);
+        res.add(AnylizeErrAndWarns::EmptyEnum, enum_.location.clone());
         continue;
       }
 
@@ -274,14 +305,12 @@ impl AnilizedTokens {
       let mut used_field_names: Vec<String> = vec![];
       for field in enum_.fields {
         if used_field_names.contains(&field.name) {
-          res.add(AnylizeError::AlreadyDefined);
+          res.add(AnylizeErrAndWarns::AlreadyDefined, enum_.location.clone());
         } else {
           used_field_names.push(field.name);
         }
       }
     }
-
-    res
   }
   fn check_type(&mut self, _: TypeType, _: &mut AnylizeResults) {
     // TODO

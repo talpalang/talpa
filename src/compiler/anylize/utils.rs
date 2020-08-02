@@ -1,3 +1,5 @@
+use super::CodeLocation;
+
 static UPPER_CASE: &'static str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 pub trait GetName {
@@ -15,4 +17,8 @@ pub fn is_snake_case(name: &str) -> bool {
 
 pub fn is_camel_case(name: &str) -> bool {
   !name.contains('_')
+}
+
+pub trait GetLocation {
+  fn location(&self) -> CodeLocation;
 }

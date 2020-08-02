@@ -1,5 +1,5 @@
 use super::*;
-use anylize::{AnylizeError, AnylizeWarning};
+use anylize::AnylizeErrAndWarns;
 use core::fmt::Display;
 use std::error::Error;
 
@@ -77,20 +77,13 @@ impl Display for LocationError {
 #[derive(Clone)]
 pub enum StateError {
   Tokenize(TokenizeError),
-  AnylizeError(AnylizeError),
-  AnylizeWarning(AnylizeWarning),
+  AnylizeErrorOrWarning(AnylizeErrAndWarns),
   // Target(TargetError),
 }
 
-impl Into<StateError> for AnylizeError {
+impl Into<StateError> for AnylizeErrAndWarns {
   fn into(self) -> StateError {
-    StateError::AnylizeError(self)
-  }
-}
-
-impl Into<StateError> for AnylizeWarning {
-  fn into(self) -> StateError {
-    StateError::AnylizeWarning(self)
+    StateError::AnylizeErrorOrWarning(self)
   }
 }
 
@@ -98,8 +91,7 @@ impl Display for StateError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       Self::Tokenize(error) => write!(f, "{}", error),
-      Self::AnylizeError(error) => write!(f, "{}", error),
-      Self::AnylizeWarning(error) => write!(f, "{}", error),
+      Self::AnylizeErrorOrWarning(error) => write!(f, "{}", error),
       // Self::Target(error) => write!(f, "{}", error),
     }
   }

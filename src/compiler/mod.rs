@@ -113,16 +113,12 @@ impl Compiler {
     let (formatted_res, anilize_res) = anilize_tokens(res);
 
     for warning in anilize_res.warnings {
-      c.props
-        .borrow_mut()
-        .warning(LocationError::only_file_name(warning, file_name.clone()));
+      c.props.borrow_mut().warning(warning);
     }
 
     if anilize_res.errors.len() > 0 {
       for error in anilize_res.errors {
-        c.props
-          .borrow_mut()
-          .error(LocationError::only_file_name(error, file_name.clone()));
+        c.props.borrow_mut().error(error);
       }
       return;
     }

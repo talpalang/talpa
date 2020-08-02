@@ -5,6 +5,7 @@ mod tests;
 
 use super::*;
 use core::fmt::Display;
+use files::File;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use tokenize::{Enum, Function, GlobalType, Keywords, Struct, TypeType, Variable};
@@ -85,7 +86,7 @@ impl AnylizeResults {
 
 #[derive(Clone)]
 pub struct AnilizedTokens {
-  file_name: Option<String>,
+  file: File,
   pub functions: HashMap<String, Function>,
   pub vars: HashMap<String, Variable>,
   pub structs: HashMap<String, Struct>,
@@ -95,7 +96,7 @@ pub struct AnilizedTokens {
 
 #[derive(Debug)]
 struct SimpleAnilizedTokens<'a> {
-  pub file_name: &'a Option<String>,
+  pub file: &'a File,
   pub functions: &'a HashMap<String, Function>,
   pub vars: &'a HashMap<String, Variable>,
   pub structs: &'a HashMap<String, Struct>,
@@ -103,10 +104,10 @@ struct SimpleAnilizedTokens<'a> {
   pub types: &'a HashMap<String, GlobalType>,
 }
 
-impl fmt::Debug for AnilizedTokens {
+impl<'a> fmt::Debug for AnilizedTokens {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple = SimpleAnilizedTokens {
-      file_name: &self.file_name,
+      file: &self.file,
       functions: &self.functions,
       vars: &self.vars,
       structs: &self.structs,
@@ -117,10 +118,10 @@ impl fmt::Debug for AnilizedTokens {
   }
 }
 
-pub fn anilize_tokens(tokenizer: &Tokenizer) -> (AnilizedTokens, AnylizeResults) {
+pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) {
   let mut anilized_res = AnylizeResults::new();
 
-  let file_name = tokenizer.get_file_name();
+  let file = tokenizer.file;
 
   let mut used_keys: HashSet<String> = HashSet::new();
 
@@ -151,7 +152,7 @@ pub fn anilize_tokens(tokenizer: &Tokenizer) -> (AnilizedTokens, AnylizeResults)
   anilized_res.merge(&mut types_res);
 
   let mut res = AnilizedTokens {
-    file_name,
+    file,
     functions,
     vars,
     structs,

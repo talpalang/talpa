@@ -1,26 +1,25 @@
 use super::*;
 use anylize::{AnylizeError, AnylizeWarning};
 use core::fmt::Display;
-use files::CodeLocation;
 use std::error::Error;
 
 #[derive(Clone)]
 pub struct LocationError {
-  pub location: CodeLocation,
   pub error_type: StateError,
   pub prev_line: Option<String>,
-  pub line: Option<String>,
+  pub line: Option<(String, usize, u16)>,
   pub next_line: Option<String>,
+  pub file_name: String,
 }
 
 impl LocationError {
-  pub fn new_simple(err: impl Into<StateError>) -> Self {
+  pub fn only_file_name(error: impl Into<StateError>, file_name: String) -> Self {
     Self {
-      location: CodeLocation::empty(),
-      error_type: err.into(),
+      error_type: error.into(),
       prev_line: None,
       line: None,
       next_line: None,
+      file_name,
     }
   }
   fn err(&self) -> String {
@@ -28,42 +27,33 @@ impl LocationError {
 
     let err = self.clone();
 
-    match (err.line, err.location.y, err.location.file_name) {
-      (Some(line), Some(y), file_name) => {
-        if let Some(file_name) = file_name {
-          output.push(format!("Error in file: {}", file_name));
-        } else {
-          output.push("Error:".into());
-        }
+    if let Some((line, x, y)) = err.line {
+      output.push(format!("Error in file: {}", self.file_name));
 
-        let x = if let Some(x) = err.location.x { x } else { 0 };
-
-        if let Some(line) = err.prev_line.clone() {
-          output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
-        }
-
-        let mut spacing = String::from("");
-        for _ in 0..x + y.to_string().len() + 1 {
-          spacing += " ";
-        }
-        output.push(format!(
-          "{}: {}\n{}^-- {}",
-          y,
-          line.replace("\t", "  "),
-          spacing,
-          err.error_type,
-        ));
-
-        if let Some(line) = err.next_line.clone() {
-          output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
-        }
+      if let Some(line) = err.prev_line.clone() {
+        output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
       }
-      (_, _, Some(file_name)) => {
-        output.push(format!("Error in file: {}\n{}", file_name, err.error_type));
+
+      let mut spacing = String::from("");
+      for _ in 0..x + y.to_string().len() + 1 {
+        spacing += " ";
       }
-      _ => {
-        output.push(format!("Error:\n{}", err.error_type));
+      output.push(format!(
+        "{}: {}\n{}^-- {}",
+        y,
+        line.replace("\t", "  "),
+        spacing,
+        err.error_type,
+      ));
+
+      if let Some(line) = err.next_line.clone() {
+        output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
       }
+    } else {
+      output.push(format!(
+        "Error in file: {}\n{}",
+        self.file_name, err.error_type
+      ));
     }
 
     format!("{}", output.join("\n"))
@@ -89,7 +79,6 @@ pub enum StateError {
   Tokenize(TokenizeError),
   AnylizeError(AnylizeError),
   AnylizeWarning(AnylizeWarning),
-  IO(IOError),
   // Target(TargetError),
 }
 
@@ -111,7 +100,6 @@ impl Display for StateError {
       Self::Tokenize(error) => write!(f, "{}", error),
       Self::AnylizeError(error) => write!(f, "{}", error),
       Self::AnylizeWarning(error) => write!(f, "{}", error),
-      Self::IO(error) => write!(f, "IO error: {}", error),
       // Self::Target(error) => write!(f, "{}", error),
     }
   }
@@ -119,6 +107,7 @@ impl Display for StateError {
 
 #[derive(Clone)]
 pub enum TokenizeError {
+  UnableToOpenFile(String),
   IncompletedArgument,
   UnexpectedEOF,
   UnexpectedChar(char),
@@ -136,31 +125,13 @@ impl Into<StateError> for TokenizeError {
 impl Display for TokenizeError {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
+      Self::UnableToOpenFile(file_name) => write!(f, "Unable to open file {}", file_name),
       Self::IncompletedArgument => write!(f, "Incompletted argument"),
       Self::UnexpectedEOF => write!(f, "Unexpected EOF"),
       Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
       Self::Custom(error) => write!(f, "{}", error),
-    }
-  }
-}
-
-#[derive(Clone)]
-pub enum IOError {
-  IO(String),
-}
-
-impl Into<StateError> for IOError {
-  fn into(self) -> StateError {
-    StateError::IO(self)
-  }
-}
-
-impl Display for IOError {
-  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::IO(error) => write!(f, "{}", error),
     }
   }
 }

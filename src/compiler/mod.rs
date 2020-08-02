@@ -7,10 +7,14 @@ pub mod tokenize;
 use anylize::anilize_tokens;
 pub use anylize::AnilizedTokens;
 pub use errors::LocationError;
-pub use files::CodeLocation;
+use errors::TokenizeError;
+pub use files::{CodeLocation, File};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 use target::generate;
 pub use target::Lang;
-use tokenize::{DataType, Tokenizer};
+use tokenize::Tokenizer;
 
 /// This contains compiler options, like the amound of threads to use or the target language
 #[derive(Clone)]
@@ -20,6 +24,9 @@ pub struct Options {
 }
 
 pub trait CompilerProps {
+  /// This requests to open a file
+  fn open_file(&mut self, file_name: &str) -> Result<Vec<u8>, String>;
+
   /// The compiler will asks compiler options via this function
   fn get_options(&self) -> Options {
     Options {
@@ -36,64 +43,109 @@ pub trait CompilerProps {
 
   /// Once the tokens of a file have been anylized they will be send here
   /// Note: Options.debug must be enabled
-  fn debug_formatted_tokens(&mut self, _: CodeLocation, _: AnilizedTokens) {}
+  fn debug_formatted_tokens(&mut self, _: String, _: AnilizedTokens) {}
   /// Once output is generated this function will be called
   /// Note: Options.debug must be enabled
-  fn debug_parsed_output(&mut self, _: CodeLocation, _: String) {}
+  fn debug_parsed_output(&mut self, _: String, _: String) {}
 }
 
 pub struct Compiler {
+  opened_files: HashMap<String, Rc<Vec<u8>>>,
   options: Options,
+  props: Rc<RefCell<dyn CompilerProps>>,
 }
 
 impl Compiler {
-  pub fn start<'a>(props: &'a mut impl CompilerProps) {
-    let c = Self {
-      options: props.get_options(),
+  pub fn open_file(&mut self, file_name: &str) -> Result<File, LocationError> {
+    if let Some(bytes) = self.opened_files.get(file_name) {
+      Ok(File {
+        bytes: Rc::clone(bytes),
+        name: file_name.to_string(),
+      })
+    } else {
+      let bytes = match self.props.borrow_mut().open_file(file_name) {
+        Err(_) => {
+          return Err(LocationError::only_file_name(
+            TokenizeError::UnableToOpenFile(file_name.to_string()),
+            file_name.to_string(),
+          ))
+        }
+        Ok(v) => v,
+      };
+
+      let file = File::new(bytes, file_name);
+      self
+        .opened_files
+        .insert(file_name.to_string(), Rc::clone(&file.bytes));
+      Ok(file)
+    }
+  }
+
+  pub fn start<'a>(entry_file_name: &str, props: Rc<RefCell<dyn CompilerProps>>) {
+    let options = {
+      let props = props.borrow_mut();
+      props.get_options()
     };
 
-    let file_name = "./example.tp";
-    let res = match Tokenizer::tokenize(DataType::File(file_name)) {
+    let mut c = Self {
+      opened_files: HashMap::new(),
+      options,
+      props,
+    };
+
+    let entry_file = match c.open_file(entry_file_name) {
+      Ok(val) => val,
       Err(err) => {
-        props.error(err);
+        c.props.borrow_mut().error(err);
+        return;
+      }
+    };
+
+    let res = match Tokenizer::tokenize(entry_file) {
+      Err(err) => {
+        c.props.borrow_mut().error(err);
         return;
       }
       Ok(v) => v,
     };
-    let (formatted_res, anilize_res) = anilize_tokens(&res);
 
-    // We don't need the res data anymore from here on wasted memory.
-    drop(res);
+    let file_name = res.file.name.clone();
+    let (formatted_res, anilize_res) = anilize_tokens(res);
 
     for warning in anilize_res.warnings {
-      props.warning(LocationError::new_simple(warning));
+      c.props
+        .borrow_mut()
+        .warning(LocationError::only_file_name(warning, file_name.clone()));
     }
 
     if anilize_res.errors.len() > 0 {
       for error in anilize_res.errors {
-        props.error(LocationError::new_simple(error));
+        c.props
+          .borrow_mut()
+          .error(LocationError::only_file_name(error, file_name.clone()));
       }
       return;
     }
 
     if c.options.debug {
-      props.debug_formatted_tokens(
-        CodeLocation::only_file_name(file_name.into()),
-        formatted_res.clone(),
-      );
+      c.props
+        .borrow_mut()
+        .debug_formatted_tokens(file_name.clone(), formatted_res.clone());
     }
 
     if let Some(lang) = c.options.lang {
       let src = match generate(formatted_res, lang) {
         Err(err) => {
-          props.error(err);
+          c.props.borrow_mut().error(err);
           return;
         }
         Ok(v) => v,
       };
 
       if c.options.debug {
-        props.debug_parsed_output(CodeLocation::empty(), src)
+        c.props
+          .borrow_mut()
+          .debug_parsed_output(file_name.clone().to_string(), src)
       }
     }
   }

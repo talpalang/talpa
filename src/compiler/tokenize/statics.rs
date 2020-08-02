@@ -22,7 +22,7 @@ impl NameBuilder {
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }
-  pub fn is_number<'a>(&self, t: &'a mut Tokenizer) -> Option<NumberParser<'a>> {
+  pub fn is_number<'a, 'b>(&self, t: &'a mut Tokenizer) -> Option<NumberParser<'a>> {
     for letter in &self.0 {
       match *letter as char {
         '.' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '0' => {}

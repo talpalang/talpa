@@ -1,21 +1,17 @@
 use super::*;
-use errors::{IOError, LocationError, StateError, TokenizeError};
-use files::CodeLocation;
+use errors::{LocationError, StateError, TokenizeError};
+use files::{CodeLocation, File};
 use function::parse_function;
 use std::collections::HashMap;
 use std::fmt;
-use std::fs::File;
-use std::io::prelude::*;
 use types::{parse_enum, parse_global_type, parse_struct};
 use utils::MatchString;
 use variable::parse_var;
 
 pub struct Tokenizer {
-  contents: Vec<u8>,
-  file_name: Option<String>,
+  pub file: File,
   pub index: usize,
-  pub last_line_x: usize, // Only set if going to
-  pub xy: (usize, usize),
+  pub y: u16,
   pub functions: Vec<Function>,
   pub vars: Vec<Variable>,
   pub structs: Vec<Struct>,
@@ -25,7 +21,6 @@ pub struct Tokenizer {
 
 #[derive(Debug)]
 struct SimpleTokenizer<'a> {
-  pub file_name: &'a Option<String>,
   pub functions: &'a Vec<Function>,
   pub vars: &'a Vec<Variable>,
   pub structs: &'a Vec<Struct>,
@@ -33,10 +28,9 @@ struct SimpleTokenizer<'a> {
   pub types: &'a Vec<GlobalType>,
 }
 
-impl fmt::Debug for Tokenizer {
+impl<'a> fmt::Debug for Tokenizer {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let simple_tokenized = SimpleTokenizer {
-      file_name: &self.file_name,
       functions: &self.functions,
       vars: &self.vars,
       structs: &self.structs,
@@ -47,69 +41,27 @@ impl fmt::Debug for Tokenizer {
   }
 }
 
-pub enum DataType<'a> {
-  /// Use a file as input to start reading from
-  File(&'a str),
-
-  /// Parse directly from bytes
-  /// Currently only used for testing so we allow it to be dead code for now
-  ///
-  /// TODO: Let this not be dead code :)
-  #[allow(dead_code)]
-  Direct(Vec<u8>),
-}
-
 impl Tokenizer {
-  pub fn tokenize(contents: DataType) -> Result<Self, LocationError> {
+  pub fn tokenize(file: File) -> Result<Self, LocationError> {
     let mut tokenizer = Self {
       index: 0,
-      xy: (0, 0),
-      last_line_x: 0,
-      contents: vec![],
+      y: 1,
+      file,
       functions: vec![],
       vars: vec![],
       structs: vec![],
       enums: vec![],
       types: vec![],
-      file_name: None,
     };
-
-    let mut tokens = match contents {
-      DataType::File(location) => {
-        let mut file = match File::open(location) {
-          Ok(f) => f,
-          Err(err) => return tokenizer.custom_error(IOError::IO(format!("{}", err)), None, true),
-        };
-        let mut contents: Vec<u8> = vec![];
-        file.read_to_end(&mut contents).unwrap();
-        contents
-      }
-      DataType::Direct(bytes) => bytes,
-    };
-
-    let mut chars_to_remove: Vec<usize> = vec![];
-
-    // Remove all the '\r' from the code because we currently do not support it
-    for (i, c) in tokens.iter().enumerate().rev() {
-      if *c as char == '\r' {
-        chars_to_remove.push(i);
-      }
-    }
-    for i in chars_to_remove {
-      tokens.remove(i);
-    }
-
-    tokenizer.contents = tokens;
 
     tokenizer.parse_nothing()?;
     Ok(tokenizer)
   }
 
-  pub fn error<T, Y>(&self, error: Y) -> Result<T, LocationError>
-  where
-    Y: Into<StateError>,
-  {
-    self.custom_error(error, None, false)
+  pub fn error<T>(&self, error: impl Into<StateError>) -> Result<T, LocationError> {
+    self
+      .file
+      .error(error, CodeLocation::new(self.index, self.y))
   }
 
   pub fn unexpected_char<T>(&self, c: char) -> Result<T, LocationError> {
@@ -120,181 +72,14 @@ impl Tokenizer {
     self.error(TokenizeError::UnexpectedEOF)
   }
 
-  pub fn custom_error<T>(
-    &self,
-    error: impl Into<StateError>,
-    file_char_number: Option<usize>,
-    only_file_name: bool,
-  ) -> Result<T, LocationError> {
-    if only_file_name {
-      return Err(LocationError {
-        location: if let Some(name) = self.file_name.clone() {
-          CodeLocation::only_file_name(name)
-        } else {
-          CodeLocation::empty()
-        },
-        error_type: error.into(),
-        prev_line: None,
-        line: None,
-        next_line: None,
-      });
-    }
-
-    let (prev_line, line, next_line, x, y) = if let Some(use_index) = file_char_number {
-      let mut y = 1;
-      let mut x = 0;
-      let mut prev_line_bytes: Option<Vec<u8>> = None;
-      let mut current_line = vec![];
-
-      for (index, letter) in self.contents.iter().enumerate() {
-        if index == use_index {
-          break;
-        }
-        match *letter as char {
-          '\n' => {
-            prev_line_bytes = Some(current_line);
-            current_line = vec![];
-            y += 1;
-            x = 0;
-          }
-          '\r' => {} // Ignore this char
-          letter_char => {
-            current_line.push(*letter);
-            x += if letter_char == '\t' { 2 } else { 1 };
-          }
-        }
-      }
-
-      let mut prev_line = None;
-      if let Some(line_data) = prev_line_bytes {
-        prev_line = Some(String::from_utf8(line_data).unwrap())
-      }
-
-      let mut next_line_bytes: Option<Vec<u8>> = None;
-      let iterrator = self.contents.iter().skip(use_index);
-      for letter in iterrator {
-        match *letter as char {
-          '\n' => {
-            if let Some(_) = next_line_bytes {
-              break;
-            }
-            next_line_bytes = Some(vec![]);
-          }
-          _ => {
-            if let Some(mut line) = next_line_bytes {
-              line.push(*letter);
-              next_line_bytes = Some(line);
-            } else {
-              current_line.push(*letter);
-            }
-          }
-        }
-      }
-
-      let next_line = if let Some(bytes) = next_line_bytes {
-        Some(String::from_utf8(bytes).unwrap())
-      } else {
-        None
-      };
-
-      (
-        prev_line,
-        String::from_utf8(current_line).unwrap(),
-        next_line,
-        x,
-        y,
-      )
-    } else {
-      let (use_index, x, y) = self.last_index();
-
-      let mut line: Vec<u8> = vec![];
-
-      let mut prev_line_index = use_index;
-      while prev_line_index > 0 {
-        match *self.contents.get(prev_line_index).unwrap() {
-          b'\n' => {
-            prev_line_index -= 1;
-            break;
-          }
-          c => {
-            prev_line_index -= 1;
-            line.insert(0, c);
-          }
-        }
-      }
-
-      let mut next_line_index = use_index;
-      while self.contents.len() > next_line_index {
-        match *self.contents.get(prev_line_index).unwrap() {
-          b'\n' => {
-            next_line_index += 1;
-            break;
-          }
-          c => {
-            next_line_index += 1;
-            line.push(c);
-          }
-        }
-      }
-
-      let prev_line: Option<String> = if use_index > x {
-        // Get the previouse line
-        let mut prev_line: Vec<u8> = vec![];
-        while prev_line_index > 0 {
-          match self.contents.get(prev_line_index) {
-            Some(b'\n') => break,
-            None => break,
-            Some(c) => prev_line.insert(0, *c),
-          }
-          prev_line_index -= 1;
-        }
-
-        Some(String::from_utf8(prev_line).unwrap())
-      } else {
-        None
-      };
-
-      let next_line: Option<String> = if self.contents.len() > next_line_index {
-        // Get the next line
-        let mut next_line: Vec<u8> = vec![];
-        while next_line_index > 0 {
-          match self.contents.get(next_line_index) {
-            Some(b'\n') => break,
-            None => break,
-            Some(c) => next_line.push(*c),
-          }
-          next_line_index += 1;
-        }
-
-        Some(String::from_utf8(next_line).unwrap())
-      } else {
-        None
-      };
-
-      (prev_line, String::from_utf8(line).unwrap(), next_line, x, y)
-    };
-
-    Err(LocationError {
-      location: CodeLocation {
-        file_name: self.file_name.clone(),
-        y: Some(y),
-        x: Some(x),
-      },
-      error_type: error.into(),
-      prev_line,
-      line: Some(line),
-      next_line,
-    })
-  }
-
-  pub fn last_char<'a>(&'a self) -> char {
+  pub fn last_char(&self) -> char {
     if self.index == 0 {
       // There aren't any chars read yet return 0
       // This is not really anywhere used so we can better return null than to return an option
       // Just overcomplicates things when it issn't needed
       return 0 as char;
     }
-    return *self.contents.get(self.index - 1).unwrap() as char;
+    return *self.file.bytes.get(self.index - 1).unwrap() as char;
   }
 
   pub fn must_next_char(&mut self) -> Result<char, LocationError> {
@@ -306,14 +91,11 @@ impl Tokenizer {
   }
 
   pub fn next_char(&mut self) -> Option<char> {
-    let letter = *self.contents.get(self.index)? as char;
+    let letter = *self.file.bytes.get(self.index)? as char;
 
     self.index += 1;
     if letter == '\n' {
-      self.last_line_x = self.xy.1;
-      self.xy = (0, self.last_line_x + 1);
-    } else {
-      self.xy.0 += 1;
+      self.y += 1;
     }
 
     // check for the start of a comment
@@ -322,47 +104,40 @@ impl Tokenizer {
     }
 
     // check for next forward slash
-    match *self.contents.get(self.index)? as char {
+    match *self.file.bytes.get(self.index)? as char {
       '/' => {
         // detected single line comment
         loop {
-          let next = *self.contents.get(self.index)? as char;
+          let next = *self.file.bytes.get(self.index)? as char;
           self.index += 1;
 
           // check for newline (end of comment)
           if next == '\n' {
-            self.last_line_x = self.xy.1;
-            self.xy = (0, self.last_line_x + 1);
+            self.y += 1;
             return self.next_char();
-          } else {
-            self.xy.0 += 1;
           }
         }
       }
       '*' => {
         // detected multi-line comment
         loop {
-          match *self.contents.get(self.index)? as char {
+          match *self.file.bytes.get(self.index)? as char {
             '\n' => {
-              self.last_line_x = self.xy.1;
-              self.xy = (0, self.last_line_x + 1);
+              self.y += 1;
               self.index += 1;
             }
             '*' => {
-              self.xy.0 += 1;
               self.index += 1;
 
               // * detected
-              if let Some(b'/') = self.contents.get(self.index) {
+              if let Some(b'/') = self.file.bytes.get(self.index) {
                 // */ detected
-                self.xy.0 += 1;
                 self.index += 1;
 
                 return self.next_char();
               }
             }
             _ => {
-              self.xy.0 += 1;
               self.index += 1;
             }
           }
@@ -372,8 +147,8 @@ impl Tokenizer {
     }
   }
 
-  fn seek_next_char(&mut self) -> Option<char> {
-    let letter = self.contents.get(self.index)?;
+  fn seek_next_char(&self) -> Option<char> {
+    let letter = self.file.bytes.get(self.index)?;
     Some(*letter as char)
   }
 
@@ -524,27 +299,26 @@ impl Tokenizer {
     Ok(())
   }
 
-  pub fn get_file_name(&self) -> Option<String> {
-    self.file_name.clone()
-  }
-
   /// This return the last location
-  /// return values: index, x, y
-  pub fn last_index(&self) -> (usize, usize, usize) {
-    let index = if self.index == 0 { 0 } else { self.index - 1 };
+  /// return values: index, y
+  pub fn last_index(&self) -> (usize, u16) {
+    if self.index == 0 {
+      return (0, 0);
+    }
 
-    let (x, y) = if self.xy.0 == 0 {
-      (0, self.last_line_x)
-    } else {
-      (self.xy.0 - 1, self.xy.1)
-    };
-
-    (index, x, y)
+    (
+      self.index - 1,
+      if let Some('\n') = self.seek_next_char() {
+        self.y - 1
+      } else {
+        self.y
+      },
+    )
   }
 
   pub fn last_index_location(&self) -> CodeLocation {
-    let (_, x, y) = self.last_index();
-    CodeLocation::only_location(x, y)
+    let (index, y) = self.last_index();
+    CodeLocation::new(index, y)
   }
 
   /*

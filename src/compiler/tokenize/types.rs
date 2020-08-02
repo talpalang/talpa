@@ -194,9 +194,12 @@ pub fn parse_type(t: &mut Tokenizer, go_back_one: bool) -> Result<Type, Location
 pub struct GlobalType {
   pub name: String,
   pub type_: Type,
+  pub location: CodeLocation,
 }
 
 pub fn parse_global_type(t: &mut Tokenizer) -> Result<GlobalType, LocationError> {
+  let location = t.last_index_location();
+
   // Parse the global type name
   let first_name_char = match t.must_next_while_empty()? {
     '{' => {
@@ -226,13 +229,18 @@ pub fn parse_global_type(t: &mut Tokenizer) -> Result<GlobalType, LocationError>
   let name = struct_name.to_string(t)?;
   let type_ = parse_type(t, false)?;
 
-  Ok(GlobalType { name, type_ })
+  Ok(GlobalType {
+    location,
+    name,
+    type_,
+  })
 }
 
 #[derive(Debug, Clone)]
 pub struct Enum {
   pub name: Option<String>,
   pub fields: Vec<EnumField>,
+  pub location: CodeLocation,
 }
 
 #[derive(Debug, Clone)]
@@ -249,6 +257,7 @@ pub fn parse_enum(t: &mut Tokenizer, inline: bool, back_one: bool) -> Result<Enu
   let mut res = Enum {
     name: None,
     fields: vec![],
+    location: t.last_index_location(),
   };
 
   if inline {
@@ -346,6 +355,8 @@ pub struct Struct {
   pub name: Option<String>,
   /// The struct fields
   pub fields: HashMap<String, Type>,
+  /// The code location of the struct
+  pub location: CodeLocation,
 }
 
 pub fn parse_struct(
@@ -360,6 +371,7 @@ pub fn parse_struct(
   let mut res = Struct {
     name: None,
     fields: HashMap::new(),
+    location: t.last_index_location(),
   };
 
   if inline {

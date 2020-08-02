@@ -56,11 +56,7 @@ impl File {
     }
   }
 
-  pub fn error<T>(
-    &self,
-    error: impl Into<StateError>,
-    location: CodeLocation,
-  ) -> Result<T, LocationError> {
+  pub fn must_error(&self, error: impl Into<StateError>, location: CodeLocation) -> LocationError {
     let mut index = location.index;
     let mut prev_line: Vec<u8> = vec![];
     let mut line: Vec<u8> = vec![];
@@ -111,7 +107,7 @@ impl File {
       }
     }
 
-    Err(LocationError {
+    LocationError {
       error_type: error.into(),
       prev_line: if prev_line.len() > 0 {
         Some(String::from_utf8(prev_line).unwrap())
@@ -125,6 +121,14 @@ impl File {
         None
       },
       file_name: self.name.to_string(),
-    })
+    }
+  }
+
+  pub fn error<T>(
+    &self,
+    error: impl Into<StateError>,
+    location: CodeLocation,
+  ) -> Result<T, LocationError> {
+    Err(self.must_error(error, location))
   }
 }

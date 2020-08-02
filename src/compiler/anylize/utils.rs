@@ -15,6 +15,11 @@ pub fn is_snake_case(name: &str) -> bool {
   return true;
 }
 
+/// A wrapper for is_snake_case
+pub fn is_var_name(name: &str) -> bool {
+  is_snake_case(name)
+}
+
 pub fn is_camel_case(name: &str) -> bool {
   !name.contains('_')
 }

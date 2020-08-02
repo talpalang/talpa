@@ -26,6 +26,8 @@ pub enum AnylizeErrAndWarns {
   EmptyEnum,
 
   // Errors
+  ContinueNotAllowed,
+  BreakNotAllowed,
   NoName,
   NamingNotAllowed,
   NameAlreadyExists,
@@ -38,6 +40,8 @@ impl AnylizeErrAndWarns {
     match self {
       Self::NameShouldBeCamelCase | Self::NameShouldBeSnakeCase | Self::EmptyEnum => true,
       Self::NoName
+      | Self::BreakNotAllowed
+      | Self::ContinueNotAllowed
       | Self::NameAlreadyExists
       | Self::AlreadyDefined
       | Self::KeywordAsName
@@ -53,6 +57,8 @@ impl Display for AnylizeErrAndWarns {
       Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
       Self::EmptyEnum => write!(f, "Empty enum"),
 
+      Self::BreakNotAllowed => write!(f, "Break not allowed here"),
+      Self::ContinueNotAllowed => write!(f, "Continue not allowed here"),
       Self::AlreadyDefined => write!(f, "Already defined"),
       Self::NoName => write!(f, "No name provided"),
       Self::NameAlreadyExists => write!(f, "Name already exsits"),
@@ -313,7 +319,10 @@ impl AnylizeResults {
         }
       }
 
-      self.check_actions(function.body)
+      // TODO: Add the function args to the check_state
+      let mut check_state = CheckActionState::new();
+
+      self.check_actions(function.body, &mut check_state)
     }
 
     // Check the global enums
@@ -388,27 +397,75 @@ impl AnylizeResults {
     }
   }
 
-  fn check_actions(&mut self, actions: Actions) {
+  fn check_actions(&mut self, actions: Actions, state: &mut CheckActionState) {
     for action in actions.actions {
-      self.check_action(action)
+      self.check_action(action, &mut state.clone())
     }
   }
 
-  fn check_action(&mut self, action: Action) {
+  fn check_action(&mut self, action: Action, state: &mut CheckActionState) {
     match action.type_ {
-      ActionType::Variable(_) => {}
-      ActionType::Return(_) => {}
-      ActionType::Assigment(_) => {}
-      ActionType::FunctionCall(_) => {}
-      ActionType::VarRef(_) => {}
-      ActionType::StaticString(_) => {}
-      ActionType::StaticNumber(_) => {}
-      ActionType::Break => {}
-      ActionType::Continue => {}
-      ActionType::For(_) => {}
-      ActionType::While(_) => {}
-      ActionType::Loop(_) => {}
-      ActionType::If(_) => {}
+      ActionType::Variable(_) => {
+        // TODO: check this
+      }
+      ActionType::Return(_) => {
+        // TODO: check this
+      }
+      ActionType::Assigment(_) => {
+        // TODO: check this
+      }
+      ActionType::FunctionCall(_) => {
+        // TODO: check this
+      }
+      ActionType::VarRef(_) => {
+        // TODO: check this
+      }
+      ActionType::StaticString(_) => {
+        // TODO: check this
+      }
+      ActionType::StaticNumber(_) => {
+        // TODO: check this
+      }
+      ActionType::Break => {
+        if !state.inside_a_loop {
+          self.add(AnylizeErrAndWarns::BreakNotAllowed, &action.location)
+        }
+      }
+      ActionType::Continue => {
+        if !state.inside_a_loop {
+          self.add(AnylizeErrAndWarns::ContinueNotAllowed, &action.location)
+        }
+      }
+      ActionType::For(data) => {
+        // TODO: Check list (Box<Action>) and item_name (String)
+        state.inside_a_loop = true;
+        self.check_actions(data.actions, state);
+      }
+      ActionType::While(data) => {
+        // TODO: Check true_value (Box<Action>)
+        state.inside_a_loop = true;
+        self.check_actions(data.actions, state);
+      }
+      ActionType::Loop(actions) => {
+        state.inside_a_loop = true;
+        self.check_actions(actions, state);
+      }
+      ActionType::If(_) => {
+        // TODO: check this
+      }
+    }
+  }
+}
+
+#[derive(Clone)]
+struct CheckActionState {
+  inside_a_loop: bool,
+}
+
+impl CheckActionState {
+  fn new() -> Self {
+    Self {
+      inside_a_loop: false,
     }
   }
 }

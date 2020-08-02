@@ -68,7 +68,7 @@ impl AnylizeResults {
     }
   }
   fn add(&mut self, item: AnylizeErrAndWarns, location: CodeLocation) {
-    let error = self.file.must_error(item, location);
+    let error = self.file.must_error(item.clone(), location);
     if item.is_warning() {
       self.warnings.push(error);
     } else {
@@ -114,7 +114,7 @@ impl<'a> fmt::Debug for AnilizedTokens {
 pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) {
   let file = tokenizer.file;
 
-  let mut anilized_res = AnylizeResults::new(file);
+  let mut anilized_res = AnylizeResults::new(file.clone());
 
   let mut used_keys: HashSet<String> = HashSet::new();
 
@@ -226,7 +226,7 @@ impl GetName for Function {
 
 impl GetLocation for Function {
   fn location(&self) -> CodeLocation {
-    self.location
+    self.location.clone()
   }
 }
 
@@ -238,7 +238,7 @@ impl GetName for Variable {
 
 impl GetLocation for Variable {
   fn location(&self) -> CodeLocation {
-    self.location
+    self.location.clone()
   }
 }
 
@@ -250,7 +250,7 @@ impl GetName for Struct {
 
 impl GetLocation for Struct {
   fn location(&self) -> CodeLocation {
-    self.location
+    self.location.clone()
   }
 }
 
@@ -262,7 +262,7 @@ impl GetName for Enum {
 
 impl GetLocation for Enum {
   fn location(&self) -> CodeLocation {
-    self.location
+    self.location.clone()
   }
 }
 
@@ -274,7 +274,7 @@ impl GetName for GlobalType {
 
 impl GetLocation for GlobalType {
   fn location(&self) -> CodeLocation {
-    self.location
+    self.location.clone()
   }
 }
 
@@ -286,18 +286,18 @@ impl AnilizedTokens {
         let mut used_arg_names: Vec<String> = vec![];
         for (name, arg) in function.args {
           if used_arg_names.contains(&name) {
-            res.add(AnylizeErrAndWarns::AlreadyDefined, arg.location);
+            res.add(AnylizeErrAndWarns::AlreadyDefined, arg.location.clone());
           } else {
             used_arg_names.push(name);
           }
-          self.check_type(arg.type_, &mut res);
+          self.check_type(arg.type_, res);
         }
       }
     }
 
     for (_, enum_) in self.enums.clone() {
       if enum_.fields.len() == 0 {
-        res.add(AnylizeErrAndWarns::EmptyEnum, enum_.location);
+        res.add(AnylizeErrAndWarns::EmptyEnum, enum_.location.clone());
         continue;
       }
 
@@ -305,7 +305,7 @@ impl AnilizedTokens {
       let mut used_field_names: Vec<String> = vec![];
       for field in enum_.fields {
         if used_field_names.contains(&field.name) {
-          res.add(AnylizeErrAndWarns::AlreadyDefined, enum_.location);
+          res.add(AnylizeErrAndWarns::AlreadyDefined, enum_.location.clone());
         } else {
           used_field_names.push(field.name);
         }

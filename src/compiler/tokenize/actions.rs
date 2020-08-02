@@ -5,12 +5,12 @@ use statics::valid_name_char;
 
 #[derive(Debug, Clone)]
 pub struct Actions {
-  pub list: Vec<Action>,
+  pub actions: Vec<Action>,
 }
 
 impl Actions {
   pub fn empty() -> Self {
-    Self { list: vec![] }
+    Self { actions: vec![] }
   }
 }
 
@@ -27,6 +27,6 @@ pub fn parse_actions(t: &mut Tokenizer) -> Result<Actions, LocationError> {
     }
 
     let action = ParseAction::start(t, true, ActionToExpect::ActionInBody)?;
-    res.list.push(action);
+    res.actions.push(action);
   }
 }

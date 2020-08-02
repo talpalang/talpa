@@ -69,6 +69,9 @@ impl File {
 
     if index > 0 {
       while let Some(c) = self.bytes.get(index) {
+        if index == 0 {
+          break;
+        }
         index -= 1;
         match *c as char {
           '\n' => break,
@@ -78,6 +81,9 @@ impl File {
       }
 
       while let Some(c) = self.bytes.get(index) {
+        if index == 0 {
+          break;
+        }
         index -= 1;
         match *c as char {
           '\n' => {

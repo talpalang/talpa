@@ -36,11 +36,20 @@ pub enum ActionType {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
-  If(
-    (Box<Action>, Actions),
-    Vec<(Action, Actions)>,
-    Option<Actions>,
-  ),
+  If(ActionIf),
+}
+
+#[derive(Debug, Clone)]
+pub struct ActionIf {
+  pub if_: IfCheckAndBody,
+  pub else_ifs: Vec<IfCheckAndBody>,
+  pub else_body: Option<Actions>,
+}
+
+#[derive(Debug, Clone)]
+pub struct IfCheckAndBody {
+  pub check: Box<Action>,
+  pub body: Actions,
 }
 
 #[derive(Debug, Clone)]
@@ -83,7 +92,7 @@ pub enum ParseActionState {
   For(ActionFor),
   While(ActionWhile),
   Loop(Actions),
-  If((Action, Actions), Vec<(Action, Actions)>, Option<Actions>),
+  If(ActionIf),
 }
 
 pub struct ParseActionStateFunctionCall {
@@ -232,9 +241,7 @@ impl<'a> ParseAction<'a> {
         arguments: meta.arguments,
       }
       .into(),
-      ParseActionState::If(if_, else_ifs, else_) => {
-        ActionType::If((Box::new(if_.0), if_.1), else_ifs, else_)
-      }
+      ParseActionState::If(if_) => ActionType::If(if_),
       ParseActionState::VarRef(name) => ActionType::VarRef(name),
       ParseActionState::Break => ActionType::Break,
       ParseActionState::Continue => ActionType::Continue,
@@ -454,7 +461,7 @@ impl<'a> ParseAction<'a> {
     let if_ = parse_if_check_and_body(self.t)?;
 
     // Parse the else if(s) and check if we need to parse the last else
-    let mut else_ifs: Vec<(Action, Actions)> = vec![];
+    let mut else_ifs: Vec<IfCheckAndBody> = vec![];
     let mut must_parse_else = false;
     loop {
       // Check for else
@@ -508,13 +515,17 @@ impl<'a> ParseAction<'a> {
       else_ifs.push(else_if);
     }
 
-    let else_ = if must_parse_else {
+    let else_body = if must_parse_else {
       Some(parse_actions(self.t)?)
     } else {
       None
     };
 
-    Ok(ParseActionState::If(if_, else_ifs, else_))
+    Ok(ParseActionState::If(ActionIf {
+      if_,
+      else_ifs,
+      else_body,
+    }))
   }
   fn parse_looper(&mut self, loop_type: LoopType) -> Result<ParseActionState, LocationError> {
     self.t.must_next_while_empty()?;
@@ -590,12 +601,12 @@ impl<'a> ParseAction<'a> {
   }
 }
 
-fn parse_if_check_and_body(t: &mut Tokenizer) -> Result<(Action, Actions), LocationError> {
+fn parse_if_check_and_body(t: &mut Tokenizer) -> Result<IfCheckAndBody, LocationError> {
   t.must_next_while_empty()?;
 
   t.index -= 1;
 
-  let if_assignment = ParseAction::start(t, true, ActionToExpect::Assignment("{"))?;
+  let check = ParseAction::start(t, true, ActionToExpect::Assignment("{"))?;
 
   let c = t.must_next_while_empty()?;
   if '{' != c {
@@ -603,5 +614,8 @@ fn parse_if_check_and_body(t: &mut Tokenizer) -> Result<(Action, Actions), Locat
   }
 
   let body = parse_actions(t)?;
-  Ok((if_assignment, body))
+  Ok(IfCheckAndBody {
+    check: Box::new(check),
+    body,
+  })
 }

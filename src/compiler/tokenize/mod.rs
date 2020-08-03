@@ -11,7 +11,10 @@ pub mod variable;
 
 use super::errors;
 use super::files;
-pub use action::{Action, ActionAssigment, ActionFor, ActionFunctionCall, ActionType, ActionWhile};
+pub use action::{
+  Action, ActionAssigment, ActionFor, ActionFunctionCall, ActionIf, ActionType, ActionWhile,
+  IfCheckAndBody,
+};
 pub use actions::Actions;
 pub use function::Function;
 pub use globals::Tokenizer;

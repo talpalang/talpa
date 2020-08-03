@@ -30,25 +30,25 @@ fn test_simple_for_names() {
       fn test(items []string) {
         for item in items {}
       }
-    "#
+    "#,
   );
-  match &tokens.functions[0].body.list[0].type_ {
+  match &tokens.functions[0].body.actions[0].type_ {
     action::ActionType::For(res) => {
       if res.item_name != "item" {
         panic!("{:?}", tokens);
       }
-      let list = &res.actions.list;
+      let list = &res.actions.actions;
       if list.len() != 0 {
         panic!("{:?}", tokens);
       }
       match &res.list.type_ {
-        action::ActionType::VarRef(name) if name == "items" => {},
+        action::ActionType::VarRef(name) if name == "items" => {}
         _ => {
           panic!("{:?}", tokens);
         }
       }
-    },
-    _ => panic!("{:?}", tokens)
+    }
+    _ => panic!("{:?}", tokens),
   }
 }
 

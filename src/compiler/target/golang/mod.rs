@@ -50,7 +50,7 @@ impl Go {
       TypeType::String => lb.code("string"),
       TypeType::Struct(res) => self.structure(res, lb),
       TypeType::TypeRef(res) => lb.code(res),
-      TypeType::Enum(_) => unimplemented!()
+      TypeType::Enum(_) => unimplemented!(),
     }
   }
   /// Parse a custom type definition
@@ -80,7 +80,7 @@ impl Go {
     }
 
     let mut actions = Block::new();
-    for action in func.body.list {
+    for action in func.body.actions {
       self.action(action, &mut actions, false);
     }
 
@@ -140,7 +140,7 @@ impl Go {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb),
+      ActionType::If(if_) => self.action_if(if_, lb),
     };
   }
   fn if_block(
@@ -153,34 +153,28 @@ impl Go {
     let mut prefix = Inline::from_str(prefix);
     add_to_prefix(self, &mut prefix);
     let mut actions = Block::new();
-    for action in body.list {
+    for action in body.actions {
       self.action(action, &mut actions, false);
     }
     lb.function(prefix, actions);
   }
-  pub fn action_if(
-    &mut self,
-    if_: (std::boxed::Box<Action>, Actions),
-    else_ifs: std::vec::Vec<(Action, Actions)>,
-    else_: std::option::Option<Actions>,
-    lb: &mut impl BuildItems,
-  ) {
+  pub fn action_if(&mut self, if_: ActionIf, lb: &mut impl BuildItems) {
     // if
-    let segment = *if_.0;
-    let body = if_.1;
+    let segment = *if_.if_.check;
+    let body = if_.if_.body.clone();
     self.if_block(lb, body, "if ", |s, p| {
       s.action(segment, p, true);
     });
 
     // else if
-    for else_if in else_ifs {
-      self.if_block(lb, else_if.1.clone(), "else if ", |s, p| {
-        s.action(else_if.0.clone(), p, true);
+    for else_if in if_.else_ifs {
+      self.if_block(lb, else_if.body.clone(), "else if ", |s, p| {
+        s.action(*else_if.check, p, true);
       });
     }
 
     // else
-    match else_ {
+    match if_.else_body {
       Some(res) => self.if_block(lb, res, "else", |_, _| {}),
       None => {}
     }
@@ -194,7 +188,7 @@ impl Go {
     self.action(*action.list, &mut prefix, true);
 
     let mut actions = Block::new();
-    for action in action.actions.list {
+    for action in action.actions.actions {
       self.action(action, &mut actions, false);
     }
 
@@ -218,7 +212,7 @@ impl Go {
     let prefix = Inline::from_str("for true");
 
     let mut contents = Block::new();
-    for act in action.list {
+    for act in action.actions {
       self.action(act, &mut contents, false);
     }
 
@@ -257,7 +251,7 @@ impl Go {
     self.action(*action.true_value, &mut prefix, true);
 
     let mut contents = Block::new();
-    for action in action.actions.list {
+    for action in action.actions.actions {
       self.action(action, &mut contents, false);
     }
 

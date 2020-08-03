@@ -8,8 +8,8 @@ pub use builder::{Block, BuildItems, Inline, LangBuilder};
 use golang::Go;
 use javascript::JavaScript;
 pub use tokenize::{
-  Action, ActionFor, ActionFunctionCall, ActionType, ActionWhile, Actions, Enum, Function,
-  GlobalType, Number, NumberType, String_, Struct, Type, TypeType, VarType, Variable,
+  Action, ActionFor, ActionFunctionCall, ActionIf, ActionType, ActionWhile, Actions, Enum,
+  Function, GlobalType, Number, NumberType, String_, Struct, Type, TypeType, VarType, Variable,
 };
 
 #[derive(Clone)]

@@ -18,19 +18,16 @@ fn test_if_names() {
       fn test(value bool) {
         if value {}
       }
-    "#
+    "#,
   );
-  match &tokens.functions[0].body.list[0].type_ {
-    action::ActionType::If(if_, _, _) => {
-      let act = &*if_.0;
-      match &act.type_ {
-        action::ActionType::VarRef(name) if name == "value" => {},
-        _ => {
-          panic!("{:?}", tokens);
-        }
+  match &tokens.functions[0].body.actions[0].type_ {
+    action::ActionType::If(if_) => match &if_.if_.check.type_ {
+      action::ActionType::VarRef(name) if name == "value" => {}
+      _ => {
+        panic!("{:?}", tokens);
       }
     },
-    _ => panic!("{:?}", tokens)
+    _ => panic!("{:?}", tokens),
   }
 }
 

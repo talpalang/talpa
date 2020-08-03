@@ -31,7 +31,7 @@ impl JavaScript {
     // function foo(a, b, c)
 
     let mut actions = Block::new();
-    for action in func.body.list {
+    for action in func.body.actions {
       self.action(action, &mut actions, false);
     }
 
@@ -68,7 +68,7 @@ impl JavaScript {
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
       ActionType::While(res) => self.action_while(res, lb),
-      ActionType::If(if_, else_if, else_) => self.action_if(if_, else_if, else_, lb), // TODO: make this
+      ActionType::If(if_) => self.action_if(if_, lb), // TODO: make this
     };
   }
   fn if_block(
@@ -81,39 +81,30 @@ impl JavaScript {
     let mut prefix = Inline::from_str(prefix);
     add_to_prefix(self, &mut prefix);
     let mut actions = Block::new();
-    for action in body.list {
+    for action in body.actions {
       self.action(action, &mut actions, false);
     }
     lb.function(prefix, actions);
   }
-  pub fn action_if(
-    &mut self,
-    if_: (
-      std::boxed::Box<tokenize::action::Action>,
-      tokenize::actions::Actions,
-    ),
-    else_ifs: std::vec::Vec<(tokenize::action::Action, tokenize::actions::Actions)>,
-    else_: std::option::Option<tokenize::actions::Actions>,
-    lb: &mut impl BuildItems,
-  ) {
+  pub fn action_if(&mut self, if_: ActionIf, lb: &mut impl BuildItems) {
     // if
-    let segment = *if_.0;
-    let body = if_.1;
+    let check = *if_.if_.check;
+    let body = if_.if_.body.clone();
     self.if_block(lb, body, "if (", |s, p| {
-      s.action(segment, p, true);
+      s.action(check, p, true);
       p.code(")");
     });
 
     // else if
-    for else_if in else_ifs {
-      self.if_block(lb, else_if.1.clone(), "else if (", |s, p| {
-        s.action(else_if.0.clone(), p, true);
+    for else_if in if_.else_ifs {
+      self.if_block(lb, else_if.body.clone(), "else if (", |s, p| {
+        s.action(*else_if.check, p, true);
         p.code(")");
       });
     }
 
     // else
-    match else_ {
+    match if_.else_body {
       Some(res) => self.if_block(lb, res, "else", |_, _| {}),
       None => {}
     }
@@ -124,7 +115,7 @@ impl JavaScript {
     prefix.code(")");
 
     let mut actions = Block::new();
-    for action in action.actions.list {
+    for action in action.actions.actions {
       self.action(action, &mut actions, false);
     }
 
@@ -153,7 +144,7 @@ impl JavaScript {
     let prefix = Inline::from_str("while (true)");
 
     let mut contents = Block::new();
-    for act in action.list {
+    for act in action.actions {
       self.action(act, &mut contents, false);
     }
 
@@ -199,7 +190,7 @@ impl JavaScript {
     prefix.code(")");
 
     let mut contents = Block::new();
-    for action in action.actions.list {
+    for action in action.actions.actions {
       self.action(action, &mut contents, false);
     }
 

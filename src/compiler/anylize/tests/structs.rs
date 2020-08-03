@@ -10,11 +10,30 @@ fn test_simple_struct() {
 }
 
 #[test]
+fn test_struct_invalid_name_warning() {
+  parse_str_warning(
+    r#"
+      struct Foo {}
+    "#,
+  );
+}
+
+#[test]
 fn test_multiple_simple_structs() {
   parse_str(
     r#"
       struct foo {}
       struct bar {}
+    "#,
+  );
+}
+
+#[test]
+fn test_multiple_structs_equal_names_fail() {
+  parse_str_fail(
+    r#"
+      struct foo {}
+      struct foo {}
     "#,
   );
 }
@@ -40,10 +59,34 @@ fn test_struct_with_simple_field() {
 }
 
 #[test]
+fn test_struct_with_field_invalid_name_warning() {
+  parse_str_warning(
+    r#"
+      struct foo {
+        BarBaz string
+      }
+    "#,
+  );
+}
+
+#[test]
 fn test_struct_with_multiple_simple_fields() {
   parse_str(
     r#"
       struct foo {
+        bar string
+        baz string
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_struct_with_multiple_fields_equal_names_fail() {
+  parse_str_fail(
+    r#"
+      struct foo {
+        bar string
         bar string
       }
     "#,

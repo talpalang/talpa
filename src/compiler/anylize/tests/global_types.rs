@@ -19,11 +19,48 @@ fn test_simple_global_type_2() {
 }
 
 #[test]
+fn test_global_type_invalid_name_warning() {
+  parse_str_warning(
+    r#"
+      type FooBar = int
+    "#,
+  );
+}
+
+#[test]
+fn test_simple_invalid_global_type_1() {
+  parse_str_fail(
+    r#"
+      type foo =
+    "#,
+  );
+}
+
+#[test]
+fn test_simple_invalid_global_type_2() {
+  parse_str_fail(
+    r#"
+      type foo
+    "#,
+  );
+}
+
+#[test]
 fn test_multiple_simple_global_types() {
   parse_str(
     r#"
       type foo = string
       type bar = int
+    "#,
+  );
+}
+
+#[test]
+fn test_multiple_global_types_equal_names_fail() {
+  parse_str_fail(
+    r#"
+      type foo = string
+      type foo = int
     "#,
   );
 }

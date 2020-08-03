@@ -174,3 +174,51 @@ fn test_while_incorrect_args() {
     "#,
   );
 }
+
+#[test]
+fn test_break() {
+  parse_str(
+    r#"
+      fn test() {
+        loop {
+          break
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_continue() {
+  parse_str(
+    r#"
+      fn test() {
+        loop {
+          continue
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_break_outside_of_loop_fail() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        break
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_continue_outside_of_loop_fail() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        continue
+      }
+    "#,
+  );
+}

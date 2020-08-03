@@ -21,8 +21,8 @@ trait AddToAnylizeResults {
 #[derive(Clone)]
 pub enum AnylizeErrAndWarns {
   // Warnings
-  NameShouldBeCamelCase,
-  NameShouldBeSnakeCase,
+  NameShouldBeCamelCase, // SomeVarName
+  NameShouldBeSnakeCase, // some_var_name
   EmptyEnum,
 
   // Errors
@@ -302,9 +302,17 @@ impl AnylizeResults {
           if used_arg_names.contains(&arg_name) {
             // TODO: use the location of the name here
             self.add(AnylizeErrAndWarns::AlreadyDefined, &function.location);
-          } else {
-            used_arg_names.push(arg_name);
+            continue;
           }
+
+          if !is_var_name(&arg_name) {
+            // TODO: use the location of the name here
+            self.add(
+              AnylizeErrAndWarns::NameShouldBeSnakeCase,
+              &function.location,
+            );
+          }
+          used_arg_names.push(arg_name);
           self.check_type(arg_type);
         }
       }

@@ -1,4 +1,12 @@
-mod utils;
+mod comments;
+mod enums;
+mod functions;
+mod general;
+mod global_types;
+mod ifs;
+mod loops;
+mod structs;
+mod variables;
 
 use super::*;
 use tokenize::Tokenizer;
@@ -9,12 +17,13 @@ fn new_file(contents: &str) -> File {
 }
 
 // Parse a string of code and validate it
-pub fn parse_str(contents: impl Into<String>) {
+pub fn parse_str(contents: impl Into<String>) -> AnilizedTokens {
   let res = Tokenizer::tokenize(new_file(&contents.into())).unwrap();
-  let (_, anilize_res) = anilize_tokens(res);
+  let (tokens, anilize_res) = anilize_tokens(res);
   if anilize_res.errors.len() > 0 {
     panic!(anilize_res.errors);
   }
+  tokens
 }
 
 // Parse a string of code and expext it somewhere to fail
@@ -26,6 +35,16 @@ pub fn parse_str_fail(contents: impl Into<String>) {
 
   let (new_res, anilize_res) = anilize_tokens(res);
   if anilize_res.errors.len() == 0 {
+    panic!("{:?}", new_res);
+  }
+}
+
+// Parse a string of code and expext a warning
+pub fn parse_str_warning(contents: impl Into<String>) {
+  let res = Tokenizer::tokenize(new_file(&contents.into())).unwrap();
+
+  let (new_res, anilize_res) = anilize_tokens(res);
+  if anilize_res.warnings.len() == 0 {
     panic!("{:?}", new_res);
   }
 }

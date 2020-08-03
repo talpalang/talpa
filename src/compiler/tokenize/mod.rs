@@ -23,6 +23,3 @@ pub use statics::Keywords;
 pub use strings::String_;
 pub use types::{Enum, GlobalType, Struct, Type, TypeType};
 pub use variable::{VarType, Variable};
-
-#[cfg(test)]
-mod tests;

@@ -239,8 +239,15 @@ impl Tokenizer {
       char_count += 1;
     }
 
+    char_count += 1;
+
     // Reset the index if we havent found the requested item
-    self.index -= char_count + 1;
+    self.index = if char_count > self.index {
+      0
+    } else {
+      self.index - char_count
+    };
+
     None
   }
 

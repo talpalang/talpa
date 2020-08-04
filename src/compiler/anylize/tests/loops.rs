@@ -255,9 +255,9 @@ fn test_loop_unreachable_code_warning_break() {
 fn test_loop_unreachable_code_warning_return() {
   parse_str_warning(
     r#"
-      fn test() {
+      fn test() string {
         loop {
-          return
+          return ""
           test()
         }
       }

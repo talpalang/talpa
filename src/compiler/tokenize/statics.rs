@@ -22,6 +22,15 @@ impl NameBuilder {
   pub fn new_with_char(first_char: char) -> Self {
     Self(vec![first_char as u8])
   }
+  pub fn is_boolean(&self) -> Option<Boolean> {
+    if self.0.clone() == b"true" {
+      Some(Boolean(true))
+    } else if self.0.clone() == b"false" {
+      Some(Boolean(false))
+    } else {
+      None
+    }
+  }
   pub fn is_number<'a, 'b>(&self, t: &'a mut Tokenizer) -> Option<NumberParser<'a>> {
     for letter in &self.0 {
       match *letter as char {
@@ -68,6 +77,8 @@ pub enum Keywords {
   Else,
   Enum,
   Type,
+  True,
+  False,
   Const,
   While,
   Break,
@@ -81,7 +92,7 @@ impl Keywords {
     let lower_word = word.to_lowercase();
     let words = [
       "fn", "let", "for", "loop", "type", "enum", "const", "while", "break", "struct", "return",
-      "continue", "if", "else",
+      "continue", "if", "else", "true", "false",
     ];
     words.contains(&lower_word.as_str())
   }
@@ -98,6 +109,8 @@ impl MatchString for Keywords {
       Self::Else => "else",
       Self::Type => "type",
       Self::Enum => "enum",
+      Self::True => "true",
+      Self::False => "false",
       Self::Const => "const",
       Self::While => "while",
       Self::Break => "break",

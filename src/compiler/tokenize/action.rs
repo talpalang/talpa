@@ -31,6 +31,7 @@ pub enum ActionType {
   VarRef(String),
   StaticString(String_),
   StaticNumber(Number),
+  StaticBoolean(Boolean),
   Break,
   Continue,
   For(ActionFor),
@@ -127,7 +128,6 @@ impl Into<ParseActionState> for ParseActionStateReturn {
   }
 }
 
-#[derive(PartialEq)]
 pub enum ActionToExpect {
   /// A line in a function body
   ActionInBody,
@@ -256,7 +256,7 @@ impl<'a> ParseAction<'a> {
   }
 
   fn detect(&mut self) -> Result<(), LocationError> {
-    let matched_res = if self.action_to_expect == ActionToExpect::ActionInBody {
+    let matched_res = if let ActionToExpect::ActionInBody = self.action_to_expect {
       self.t.try_match(vec![
         &Keywords::Const,
         &Keywords::Let,
@@ -269,7 +269,6 @@ impl<'a> ParseAction<'a> {
         &Keywords::If,
       ])
     } else {
-      // Matching keywords is only allowed when inside the body
       None
     };
 
@@ -303,9 +302,13 @@ impl<'a> ParseAction<'a> {
           let to_commit = self.parse_if()?;
           self.commit_state(to_commit)?;
         }
-        Keywords::Fn | Keywords::Struct | Keywords::Enum | Keywords::Type | Keywords::Else => {
-          return self.t.error(TokenizeError::UnexpectedResult)
-        }
+        Keywords::True
+        | Keywords::False
+        | Keywords::Fn
+        | Keywords::Struct
+        | Keywords::Enum
+        | Keywords::Type
+        | Keywords::Else => return self.t.error(TokenizeError::UnexpectedResult),
       }
       return Ok(());
     }
@@ -364,6 +367,12 @@ impl<'a> ParseAction<'a> {
           return self.t.unexpected_char(c);
         }
       }
+    }
+
+    if let Some(number) = name.is_boolean() {
+      // The defined name is actually a boolean
+      self.res = Some(Action::here(self.t, number.into()));
+      return Ok(());
     }
 
     if let Some(number_parser) = name.is_number(self.t) {

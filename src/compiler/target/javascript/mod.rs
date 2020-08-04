@@ -65,6 +65,7 @@ impl JavaScript {
       ActionType::Return(res) => self.action_return(res, lb),
       ActionType::StaticNumber(res) => self.action_num(res, lb),
       ActionType::StaticString(res) => self.action_str(res, lb),
+      ActionType::StaticBoolean(res) => self.action_bool(res, lb),
       ActionType::Variable(res) => self.action_var(res, lb),
       ActionType::VarRef(res) => lb.code(res + if inline { "" } else { ";" }),
       ActionType::While(res) => self.action_while(res, lb),
@@ -166,6 +167,9 @@ impl JavaScript {
   }
   pub fn action_str(&mut self, action: String_, lb: &mut impl BuildItems) {
     lb.code(format!("\"{}\"", action.content));
+  }
+  pub fn action_bool(&mut self, boolean: Boolean, lb: &mut impl BuildItems) {
+    lb.code(boolean.to_string());
   }
   pub fn action_var(&mut self, action: Variable, lb: &mut impl BuildItems) {
     let prefix = format!(

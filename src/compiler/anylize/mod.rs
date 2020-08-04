@@ -79,7 +79,7 @@ impl Display for AnylizeErrAndWarns {
       Self::NameAlreadyExists => write!(f, "Name already exsits"),
       Self::NamingNotAllowed => write!(f, "A name is not allowed here"),
       Self::KeywordAsName => write!(f, "Using a language keyword is not allowed here"),
-      Self::VariableRefDoesNotExist => write!(f, "The variable referenced to doesn't exist"),
+      Self::VariableRefDoesNotExist => write!(f, "The variable referenced doesn't exist"),
       Self::FunctionDoesNotExist => write!(f, "This function doesn't exist"),
       Self::VariableAlreadyDeclared => write!(f, "Variable already declared"),
       Self::Inmutable => write!(f, "Data in un mutatable"),
@@ -436,8 +436,9 @@ impl AnylizeResults {
   }
 
   fn check_actions(&mut self, actions: Actions, state: &mut CheckActionState) {
+    let mut new_state = state.clone();
     for action in actions.actions {
-      self.check_action(action, &mut state.clone())
+      self.check_action(action, &mut new_state)
     }
   }
 
@@ -514,6 +515,9 @@ impl AnylizeResults {
           return;
         }
         // TODO: Check if the variable matches the expected type here if we expect some kind of type like function calls arguments
+      }
+      ActionType::StaticBoolean(_) => {
+        // TODO: check this
       }
       ActionType::StaticString(_) => {
         // TODO: check this

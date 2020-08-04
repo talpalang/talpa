@@ -1,1 +1,15 @@
-/
+const glob = "Global variable"
+
+fn do_something() string {
+  return "Hello, world!"
+}
+
+fn test(a int, b int) {
+  let val1 = a
+  let val2 = b
+}
+
+fn main() {
+  let hello = "Hello, world!"
+  test(20, 48)
+}

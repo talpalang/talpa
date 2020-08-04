@@ -33,6 +33,9 @@ pub enum AnylizeErrAndWarns {
   NameAlreadyExists,
   AlreadyDefined,
   KeywordAsName,
+  VariableRefDoesNotExist,
+  FunctionDoesNotExist,
+  VariableAlreadyDeclared,
 }
 
 impl AnylizeErrAndWarns {
@@ -45,7 +48,10 @@ impl AnylizeErrAndWarns {
       | Self::NameAlreadyExists
       | Self::AlreadyDefined
       | Self::KeywordAsName
-      | Self::NamingNotAllowed => false,
+      | Self::NamingNotAllowed
+      | Self::VariableRefDoesNotExist
+      | Self::FunctionDoesNotExist
+      | Self::VariableAlreadyDeclared => false,
     }
   }
 }
@@ -63,7 +69,10 @@ impl Display for AnylizeErrAndWarns {
       Self::NoName => write!(f, "No name provided"),
       Self::NameAlreadyExists => write!(f, "Name already exsits"),
       Self::NamingNotAllowed => write!(f, "A name is not allowed here"),
-      Self::KeywordAsName => write!(f, "Using a lided"),
+      Self::KeywordAsName => write!(f, "Using a language keyword is not allowed here"),
+      Self::VariableRefDoesNotExist => write!(f, "The variable referenced to doesn't exist"),
+      Self::FunctionDoesNotExist => write!(f, "This function doesn't exist"),
+      Self::VariableAlreadyDeclared => write!(f, "Variable already declared"),
     }
   }
 }
@@ -289,6 +298,8 @@ impl AnylizeResults {
   fn check_anilized_tokens(&mut self, data: &mut AnilizedTokens) {
     // Check the global functions
     for (_, function) in data.functions.clone() {
+      let mut check_state = CheckActionState::new(data);
+
       if function.args.len() > 0 {
         // check the function arguments
         let mut used_arg_names: Vec<String> = vec![];
@@ -306,7 +317,8 @@ impl AnylizeResults {
               &function.location,
             );
           }
-          used_arg_names.push(arg_name);
+          used_arg_names.push(arg_name.clone());
+          check_state.vars.insert(arg_name);
           self.check_type(arg_type);
         }
       }
@@ -320,9 +332,6 @@ impl AnylizeResults {
           );
         }
       }
-
-      // TODO: Add the function args to the check_state
-      let mut check_state = CheckActionState::new();
 
       self.check_actions(function.body, &mut check_state)
     }
@@ -406,21 +415,56 @@ impl AnylizeResults {
   }
 
   fn check_action(&mut self, action: Action, state: &mut CheckActionState) {
+    // TODO: Disallow some things when this is a inline action
+
     match action.type_ {
-      ActionType::Variable(_) => {
-        // TODO: check this
+      ActionType::Variable(var) => {
+        if state.vars.contains(&var.name) {
+          self.add(
+            AnylizeErrAndWarns::VariableAlreadyDeclared,
+            &action.location,
+          );
+          return;
+        }
+        state.vars.insert(var.name);
+
+        self.check_action(*var.action, state);
       }
-      ActionType::Return(_) => {
-        // TODO: check this
+      ActionType::Return(data) => {
+        if let Some(action) = data {
+          self.check_action(*action, state);
+        }
+        // Check if this function actually expects response data
       }
-      ActionType::Assigment(_) => {
-        // TODO: check this
+      ActionType::Assigment(data) => {
+        if !state.vars.contains(&data.name) {
+          self.add(
+            AnylizeErrAndWarns::VariableRefDoesNotExist,
+            &action.location,
+          );
+        }
+
+        self.check_action(*data.action, state);
       }
-      ActionType::FunctionCall(_) => {
-        // TODO: check this
+      ActionType::FunctionCall(data) => {
+        if !state.anilized_tokens.functions.contains_key(&data.name) {
+          self.add(AnylizeErrAndWarns::FunctionDoesNotExist, &action.location);
+        }
+
+        for argument in &data.arguments {
+          // TODO make sure these actions are checked inline and check if they match the expted function type
+          self.check_action(argument.clone(), state);
+        }
       }
-      ActionType::VarRef(_) => {
-        // TODO: check this
+      ActionType::VarRef(var_name) => {
+        if !state.vars.contains(&var_name) {
+          self.add(
+            AnylizeErrAndWarns::VariableRefDoesNotExist,
+            &action.location,
+          );
+          return;
+        }
+        // TODO: Check if the variable matches the expected type here if we expect some kind of type like function calls arguments
       }
       ActionType::StaticString(_) => {
         // TODO: check this
@@ -439,12 +483,23 @@ impl AnylizeResults {
         }
       }
       ActionType::For(data) => {
-        // TODO: Check list (Box<Action>) and item_name (String)
+        // TODO: Check if the variable matches the expected type
+        self.check_action(*data.list, state);
+
+        if state.vars.contains(&data.item_name) {
+          self.add(
+            AnylizeErrAndWarns::VariableAlreadyDeclared,
+            &action.location,
+          );
+        }
+
         state.inside_a_loop = true;
         self.check_actions(data.actions, state);
       }
       ActionType::While(data) => {
-        // TODO: Check true_value (Box<Action>)
+        // TODO: Check if the variable matches the expected type here (bool)
+        self.check_action(*data.true_value, state);
+
         state.inside_a_loop = true;
         self.check_actions(data.actions, state);
       }
@@ -452,22 +507,40 @@ impl AnylizeResults {
         state.inside_a_loop = true;
         self.check_actions(actions, state);
       }
-      ActionType::If(_) => {
-        // TODO: check this
+      ActionType::If(data) => {
+        // TODO: We can check a lot of things here like if we can never reach else ifs or else, and there are meany more
+
+        // TODO: Check if the variable matches the expected type here
+        self.check_action(*data.if_.check, state);
+        self.check_actions(data.if_.body, state);
+
+        for else_if in data.else_ifs {
+          // TODO: Check if the variable matches the expected type here
+          self.check_action(*else_if.check, state);
+          self.check_actions(else_if.body, state);
+        }
+
+        if let Some(else_body) = data.else_body {
+          self.check_actions(else_body, state);
+        }
       }
     }
   }
 }
 
 #[derive(Clone)]
-struct CheckActionState {
+struct CheckActionState<'a> {
   inside_a_loop: bool,
+  vars: HashSet<String>,
+  anilized_tokens: &'a AnilizedTokens,
 }
 
-impl CheckActionState {
-  fn new() -> Self {
+impl<'a> CheckActionState<'a> {
+  fn new(anilized_tokens: &'a AnilizedTokens) -> Self {
     Self {
       inside_a_loop: false,
+      vars: HashSet::new(),
+      anilized_tokens,
     }
   }
 }

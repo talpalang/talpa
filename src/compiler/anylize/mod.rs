@@ -24,6 +24,7 @@ pub enum AnylizeErrAndWarns {
   NameShouldBeCamelCase, // SomeVarName
   NameShouldBeSnakeCase, // some_var_name
   EmptyEnum,
+  UnreachableCode,
 
   // Errors
   ContinueNotAllowed,
@@ -41,7 +42,10 @@ pub enum AnylizeErrAndWarns {
 impl AnylizeErrAndWarns {
   fn is_warning(&self) -> bool {
     match self {
-      Self::NameShouldBeCamelCase | Self::NameShouldBeSnakeCase | Self::EmptyEnum => true,
+      Self::NameShouldBeCamelCase
+      | Self::NameShouldBeSnakeCase
+      | Self::EmptyEnum
+      | Self::UnreachableCode => true,
       Self::NoName
       | Self::BreakNotAllowed
       | Self::ContinueNotAllowed
@@ -59,10 +63,13 @@ impl AnylizeErrAndWarns {
 impl Display for AnylizeErrAndWarns {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
+      // Warnings
       Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
       Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
       Self::EmptyEnum => write!(f, "Empty enum"),
+      Self::UnreachableCode => write!(f, "Unreachable code"),
 
+      // Errors
       Self::BreakNotAllowed => write!(f, "Break not allowed here"),
       Self::ContinueNotAllowed => write!(f, "Continue not allowed here"),
       Self::AlreadyDefined => write!(f, "Already defined"),
@@ -417,6 +424,10 @@ impl AnylizeResults {
   fn check_action(&mut self, action: Action, state: &mut CheckActionState) {
     // TODO: Disallow some things when this is a inline action
 
+    if state.unreachable_code {
+      self.add(AnylizeErrAndWarns::UnreachableCode, &action.location);
+    }
+
     match action.type_ {
       ActionType::Variable(var) => {
         if state.vars.contains(&var.name) {
@@ -431,10 +442,12 @@ impl AnylizeResults {
         self.check_action(*var.action, state);
       }
       ActionType::Return(data) => {
+        // TODO: Check if this function actually expects response data
         if let Some(action) = data {
           self.check_action(*action, state);
         }
-        // Check if this function actually expects response data
+
+        state.unreachable_code = true;
       }
       ActionType::Assigment(data) => {
         if !state.vars.contains(&data.name) {
@@ -476,11 +489,15 @@ impl AnylizeResults {
         if !state.inside_a_loop {
           self.add(AnylizeErrAndWarns::BreakNotAllowed, &action.location)
         }
+
+        state.unreachable_code = true;
       }
       ActionType::Continue => {
         if !state.inside_a_loop {
           self.add(AnylizeErrAndWarns::ContinueNotAllowed, &action.location)
         }
+
+        state.unreachable_code = true;
       }
       ActionType::For(data) => {
         // TODO: Check if the variable matches the expected type
@@ -531,6 +548,7 @@ impl AnylizeResults {
 #[derive(Clone)]
 struct CheckActionState<'a> {
   inside_a_loop: bool,
+  unreachable_code: bool,
   vars: HashSet<String>,
   anilized_tokens: &'a AnilizedTokens,
 }
@@ -539,6 +557,7 @@ impl<'a> CheckActionState<'a> {
   fn new(anilized_tokens: &'a AnilizedTokens) -> Self {
     Self {
       inside_a_loop: false,
+      unreachable_code: false,
       vars: HashSet::new(),
       anilized_tokens,
     }

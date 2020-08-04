@@ -4,6 +4,15 @@ use super::*;
 fn test_simple_struct() {
   parse_str(
     r#"
+      struct Foo {}
+    "#,
+  );
+}
+
+#[test]
+fn test_struct_invalid_name_warning() {
+  parse_str_warning(
+    r#"
       struct foo {}
     "#,
   );
@@ -13,8 +22,18 @@ fn test_simple_struct() {
 fn test_multiple_simple_structs() {
   parse_str(
     r#"
-      struct foo {}
-      struct bar {}
+      struct Foo {}
+      struct Bar {}
+    "#,
+  );
+}
+
+#[test]
+fn test_multiple_structs_equal_names_fail() {
+  parse_str_fail(
+    r#"
+      struct Foo {}
+      struct Foo {}
     "#,
   );
 }
@@ -32,8 +51,19 @@ fn test_invalid_inline_struct_in_global() {
 fn test_struct_with_simple_field() {
   parse_str(
     r#"
-      struct foo {
+      struct Foo {
         bar string
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_struct_with_field_invalid_name_warning() {
+  parse_str_warning(
+    r#"
+      struct Foo {
+        BarBaz string
       }
     "#,
   );
@@ -43,7 +73,20 @@ fn test_struct_with_simple_field() {
 fn test_struct_with_multiple_simple_fields() {
   parse_str(
     r#"
-      struct foo {
+      struct Foo {
+        bar string
+        baz string
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_struct_with_multiple_fields_equal_names_fail() {
+  parse_str_fail(
+    r#"
+      struct Foo {
+        bar string
         bar string
       }
     "#,
@@ -54,7 +97,7 @@ fn test_struct_with_multiple_simple_fields() {
 fn test_struct_with_inner_struct_1() {
   parse_str(
     r#"
-      struct foo {
+      struct Foo {
         bar struct {}
       }
     "#,
@@ -65,7 +108,7 @@ fn test_struct_with_inner_struct_1() {
 fn test_struct_with_inner_struct_2() {
   parse_str(
     r#"
-      struct foo {
+      struct Foo {
         bar struct {
           baz string
         }
@@ -78,7 +121,7 @@ fn test_struct_with_inner_struct_2() {
 fn test_struct_with_inner_struct_3() {
   parse_str(
     r#"
-      struct foo {
+      struct Foo {
         foo_bar string
         bar struct {
           baz struct {}
@@ -93,7 +136,7 @@ fn test_struct_with_inner_struct_3() {
 fn test_invalid_struct_data() {
   parse_str_fail(
     r#"
-      struct foo {
+      struct Foo {
         bar
         baz
         foo_bar

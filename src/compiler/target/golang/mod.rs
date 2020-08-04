@@ -180,9 +180,6 @@ impl Go {
     }
   }
   pub fn action_for(&mut self, action: ActionFor, lb: &mut impl BuildItems) {
-    //   for _, v := range items {
-    //     fmt.Println(v)
-    // }
     let mut prefix =
       Inline::from_str(format!("for _, {name} := range ", name = &action.item_name,));
     self.action(*action.list, &mut prefix, true);

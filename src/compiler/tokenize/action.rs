@@ -319,12 +319,12 @@ impl<'a> ParseAction<'a> {
     // 6. inline structs `foo{bar: baz}`
     //
     // The code underhere will detect what the action is,
-    // TODO: 2, 3, 4, 5, 6
+    // TODO: 5, 6
     let mut name = NameBuilder::new();
     let mut detected_action = DetectedAction::VarRefName;
     let mut name_completed = false;
 
-    while let Some(c) = self.t.next_char() {
+    while let Some(c) = self.t.next_char().2 {
       match c {
         '"' if name.len() == 0 => {
           // Parse a static string

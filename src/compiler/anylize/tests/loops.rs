@@ -32,8 +32,8 @@ fn test_simple_for_names() {
       }
     "#,
   );
-  match &tokens.functions[0].body.actions[0].type_ {
-    action::ActionType::For(res) => {
+  match &tokens.functions["test"].body.actions[0].type_ {
+    ActionType::For(res) => {
       if res.item_name != "item" {
         panic!("{:?}", tokens);
       }
@@ -42,7 +42,7 @@ fn test_simple_for_names() {
         panic!("{:?}", tokens);
       }
       match &res.list.type_ {
-        action::ActionType::VarRef(name) if name == "items" => {}
+        ActionType::VarRef(name) if name == "items" => {}
         _ => {
           panic!("{:?}", tokens);
         }
@@ -170,6 +170,54 @@ fn test_while_incorrect_args() {
     r#"
       fn test(items []string) {
         while a b c {}
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_break() {
+  parse_str(
+    r#"
+      fn test() {
+        loop {
+          break
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_continue() {
+  parse_str(
+    r#"
+      fn test() {
+        loop {
+          continue
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_break_outside_of_loop_fail() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        break
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_continue_outside_of_loop_fail() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        continue
       }
     "#,
   );

@@ -20,9 +20,9 @@ fn test_if_names() {
       }
     "#,
   );
-  match &tokens.functions[0].body.actions[0].type_ {
-    action::ActionType::If(if_) => match &if_.if_.check.type_ {
-      action::ActionType::VarRef(name) if name == "value" => {}
+  match &tokens.functions["test"].body.actions[0].type_ {
+    ActionType::If(if_) => match &if_.if_.check.type_ {
+      ActionType::VarRef(name) if name == "value" => {}
       _ => {
         panic!("{:?}", tokens);
       }

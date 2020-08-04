@@ -51,3 +51,33 @@ fn test_comments_inside_of_function() {
     "#,
   );
 }
+
+#[test]
+fn test_comment_direct_eof_1() {
+  parse_str("//");
+}
+
+#[test]
+fn test_comment_direct_eof_2() {
+  parse_str(" //");
+}
+
+#[test]
+fn test_comment_direct_eof_3() {
+  parse_str("// ");
+}
+
+#[test]
+fn test_multi_line_comment_direct_eof_1() {
+  parse_str("/*");
+}
+
+#[test]
+fn test_multi_line_comment_direct_eof_2() {
+  parse_str(" /*");
+}
+
+#[test]
+fn test_multi_line_comment_direct_eof_3() {
+  parse_str("/* ");
+}

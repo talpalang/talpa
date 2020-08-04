@@ -58,44 +58,53 @@ impl File {
 
   pub fn must_error(&self, error: impl Into<StateError>, location: CodeLocation) -> LocationError {
     let mut index = location.index;
-    let mut prev_line: Vec<u8> = vec![];
-    let mut line: Vec<u8> = vec![];
-    let mut next_line: Vec<u8> = vec![];
+    let mut scan_prev_line = false;
+    let mut prev_line_bytes: Vec<u8> = vec![];
+    let mut line_bytes: Vec<u8> = vec![];
+    let mut next_line_bytes: Vec<u8> = vec![];
     let mut x = 0;
 
     if index > 0 {
-      while let Some(c) = self.bytes.get(index) {
+      loop {
+        index -= 1;
+        if let Some(c) = self.bytes.get(index) {
+          match *c as char {
+            '\n' => {
+              scan_prev_line = true;
+              break;
+            }
+            _ => line_bytes.insert(0, *c),
+          };
+          x += 1;
+        }
+
         if index == 0 {
           break;
         }
-        index -= 1;
-        match *c as char {
-          '\n' => break,
-          _ => line.insert(0, *c),
-        };
-        x += 1;
       }
 
-      while let Some(c) = self.bytes.get(index) {
-        if index == 0 {
-          break;
-        }
-        index -= 1;
-        match *c as char {
-          '\n' => {
+      if scan_prev_line {
+        while let Some(c) = self.bytes.get(index) {
+          if index == 0 {
             break;
           }
-          _ => prev_line.insert(0, *c),
+          index -= 1;
+          match *c as char {
+            '\n' => {
+              break;
+            }
+            _ => prev_line_bytes.insert(0, *c),
+          }
         }
       }
     }
 
-    index = location.index + 1;
+    index = location.index;
     while let Some(c) = self.bytes.get(index) {
       index += 1;
       match *c as char {
         '\n' => break,
-        _ => line.push(*c),
+        _ => line_bytes.push(*c),
       }
     }
 
@@ -103,23 +112,29 @@ impl File {
       index += 1;
       match *c as char {
         '\n' => break,
-        _ => next_line.push(*c),
+        _ => next_line_bytes.push(*c),
       }
     }
+
+    let prev_line = if scan_prev_line {
+      Some(String::from_utf8(prev_line_bytes).unwrap())
+    } else {
+      None
+    };
+
+    let line = Some((String::from_utf8(line_bytes).unwrap(), x, location.y));
+
+    let next_line = if next_line_bytes.len() > 0 {
+      Some(String::from_utf8(next_line_bytes).unwrap())
+    } else {
+      None
+    };
 
     LocationError {
       error_type: error.into(),
-      prev_line: if prev_line.len() > 0 {
-        Some(String::from_utf8(prev_line).unwrap())
-      } else {
-        None
-      },
-      line: Some((String::from_utf8(line).unwrap(), x, location.y)),
-      next_line: if next_line.len() > 0 {
-        Some(String::from_utf8(next_line).unwrap())
-      } else {
-        None
-      },
+      prev_line,
+      line,
+      next_line,
       file_name: self.name.to_string(),
     }
   }

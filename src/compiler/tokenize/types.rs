@@ -3,7 +3,6 @@ use action::{ActionToExpect, ParseAction};
 use errors::{LocationError, TokenizeError};
 use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
-use std::collections::HashMap;
 use utils::MatchString;
 
 #[derive(Debug, Clone)]
@@ -146,7 +145,7 @@ pub fn parse_type(t: &mut Tokenizer, go_back_one: bool) -> Result<Type, Location
     Some(matched_type) => {
       let mut return_value: Option<TypeType> = None;
 
-      let add_to_substract = if let Some(c) = t.next_char() {
+      let add_to_substract = if let Some(c) = t.next_char().2 {
         if let &DetectType::Struct = matched_type {
           if c == '{' || c == ' ' || c == '\n' {
             let res = parse_struct(t, true, c == '{')?;
@@ -305,7 +304,7 @@ pub fn parse_enum(t: &mut Tokenizer, inline: bool, back_one: bool) -> Result<Enu
       c => c,
     };
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = t.next_char() {
+    while let Some(c) = t.next_char().2 {
       match c {
         _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
@@ -354,7 +353,7 @@ pub struct Struct {
   /// The struct name if it's a named struct, inline structs don't have names
   pub name: Option<String>,
   /// The struct fields
-  pub fields: HashMap<String, Type>,
+  pub fields: Vec<(String, Type)>,
   /// The code location of the struct
   pub location: CodeLocation,
 }
@@ -370,7 +369,7 @@ pub fn parse_struct(
 
   let mut res = Struct {
     name: None,
-    fields: HashMap::new(),
+    fields: vec![],
     location: t.last_index_location(),
   };
 
@@ -392,7 +391,7 @@ pub fn parse_struct(
       c => return t.unexpected_char(c),
     };
     let mut struct_name = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = t.next_char() {
+    while let Some(c) = t.next_char().2 {
       match c {
         ' ' | '\t' | '\n' => {
           if let Some('{') = t.next_while(" \t") {
@@ -418,7 +417,7 @@ pub fn parse_struct(
       c => c,
     };
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
-    while let Some(c) = t.next_char() {
+    while let Some(c) = t.next_char().2 {
       match c {
         _ if valid_name_char(c) => field_name_builder.push(c),
         ' ' | '\t' => break,
@@ -431,7 +430,7 @@ pub fn parse_struct(
     t.must_next_while(" \t")?;
     let parsed_type = parse_type(t, true)?;
 
-    res.fields.insert(field_name, parsed_type);
+    res.fields.push((field_name, parsed_type));
   }
 
   Ok(res)

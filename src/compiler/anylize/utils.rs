@@ -21,7 +21,17 @@ pub fn is_var_name(name: &str) -> bool {
 }
 
 pub fn is_camel_case(name: &str) -> bool {
-  !name.contains('_')
+  // Camel case does not contain underscores
+  if name.contains('_') {
+    return false;
+  }
+
+  // Check if the first char is upper case
+  if let Some(first) = name.chars().next() {
+    first.is_uppercase()
+  } else {
+    false
+  }
 }
 
 pub trait GetLocation {

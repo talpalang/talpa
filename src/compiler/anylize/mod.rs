@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use tokenize::{
   Action, ActionType, Actions, Enum, Function, GlobalType, Keywords, Struct, Type, TypeType,
-  Variable,
+  VarType, Variable,
 };
 use utils::{is_camel_case, is_snake_case, is_var_name, GetLocation, GetName};
 
@@ -37,6 +37,7 @@ pub enum AnylizeErrAndWarns {
   VariableRefDoesNotExist,
   FunctionDoesNotExist,
   VariableAlreadyDeclared,
+  Inmutable,
 }
 
 impl AnylizeErrAndWarns {
@@ -55,7 +56,8 @@ impl AnylizeErrAndWarns {
       | Self::NamingNotAllowed
       | Self::VariableRefDoesNotExist
       | Self::FunctionDoesNotExist
-      | Self::VariableAlreadyDeclared => false,
+      | Self::VariableAlreadyDeclared
+      | Self::Inmutable => false,
     }
   }
 }
@@ -80,6 +82,7 @@ impl Display for AnylizeErrAndWarns {
       Self::VariableRefDoesNotExist => write!(f, "The variable referenced to doesn't exist"),
       Self::FunctionDoesNotExist => write!(f, "This function doesn't exist"),
       Self::VariableAlreadyDeclared => write!(f, "Variable already declared"),
+      Self::Inmutable => write!(f, "Data in un mutatable"),
     }
   }
 }
@@ -325,7 +328,14 @@ impl AnylizeResults {
             );
           }
           used_arg_names.push(arg_name.clone());
-          check_state.vars.insert(arg_name);
+          check_state.vars.insert(
+            arg_name,
+            VariableDetials {
+              global: false,
+              mutatable: false,
+            },
+          );
+
           self.check_type(arg_type);
         }
       }
@@ -338,6 +348,16 @@ impl AnylizeResults {
             &function.location,
           );
         }
+      }
+
+      for (var_name, _) in &data.vars {
+        check_state.vars.insert(
+          var_name.clone(),
+          VariableDetials {
+            global: true,
+            mutatable: false,
+          },
+        );
       }
 
       self.check_actions(function.body, &mut check_state)
@@ -430,14 +450,27 @@ impl AnylizeResults {
 
     match action.type_ {
       ActionType::Variable(var) => {
-        if state.vars.contains(&var.name) {
-          self.add(
-            AnylizeErrAndWarns::VariableAlreadyDeclared,
-            &action.location,
-          );
-          return;
+        if let Some(already_defined_var) = state.vars.get(&var.name) {
+          if !already_defined_var.global {
+            self.add(
+              AnylizeErrAndWarns::VariableAlreadyDeclared,
+              &action.location,
+            );
+            return;
+          }
         }
-        state.vars.insert(var.name);
+
+        state.vars.insert(
+          var.name,
+          VariableDetials {
+            global: false,
+            mutatable: if let VarType::Let = var.var_type {
+              true
+            } else {
+              false
+            },
+          },
+        );
 
         self.check_action(*var.action, state);
       }
@@ -450,13 +483,16 @@ impl AnylizeResults {
         state.unreachable_code = true;
       }
       ActionType::Assigment(data) => {
-        if !state.vars.contains(&data.name) {
+        if let Some(var) = state.vars.get(&data.name) {
+          if !var.mutatable {
+            self.add(AnylizeErrAndWarns::Inmutable, &action.location);
+          }
+        } else {
           self.add(
             AnylizeErrAndWarns::VariableRefDoesNotExist,
             &action.location,
           );
         }
-
         self.check_action(*data.action, state);
       }
       ActionType::FunctionCall(data) => {
@@ -470,7 +506,7 @@ impl AnylizeResults {
         }
       }
       ActionType::VarRef(var_name) => {
-        if !state.vars.contains(&var_name) {
+        if !state.vars.contains_key(&var_name) {
           self.add(
             AnylizeErrAndWarns::VariableRefDoesNotExist,
             &action.location,
@@ -503,11 +539,13 @@ impl AnylizeResults {
         // TODO: Check if the variable matches the expected type
         self.check_action(*data.list, state);
 
-        if state.vars.contains(&data.item_name) {
-          self.add(
-            AnylizeErrAndWarns::VariableAlreadyDeclared,
-            &action.location,
-          );
+        if let Some(var) = state.vars.get(&data.item_name) {
+          if !var.global {
+            self.add(
+              AnylizeErrAndWarns::VariableAlreadyDeclared,
+              &action.location,
+            );
+          }
         }
 
         state.inside_a_loop = true;
@@ -549,8 +587,14 @@ impl AnylizeResults {
 struct CheckActionState<'a> {
   inside_a_loop: bool,
   unreachable_code: bool,
-  vars: HashSet<String>,
+  vars: HashMap<String, VariableDetials>,
   anilized_tokens: &'a AnilizedTokens,
+}
+
+#[derive(Clone)]
+struct VariableDetials {
+  global: bool,
+  mutatable: bool,
 }
 
 impl<'a> CheckActionState<'a> {
@@ -558,7 +602,7 @@ impl<'a> CheckActionState<'a> {
     Self {
       inside_a_loop: false,
       unreachable_code: false,
-      vars: HashSet::new(),
+      vars: HashMap::new(),
       anilized_tokens,
     }
   }

@@ -4,7 +4,7 @@ use super::*;
 fn test_simple_enum() {
   parse_str(
     r#"
-      enum foo {}
+      enum Foo {}
     "#,
   );
 }
@@ -51,7 +51,7 @@ fn test_invalid_inline_enum_in_global() {
 fn test_enum_with_simple_field() {
   parse_str(
     r#"
-      enum foo {
+      enum Foo {
         bar
       }
     "#,
@@ -62,7 +62,7 @@ fn test_enum_with_simple_field() {
 fn test_enum_with_multiple_simple_fields() {
   parse_str(
     r#"
-      enum foo {
+      enum Foo {
         bar
         baz
       }
@@ -74,7 +74,7 @@ fn test_enum_with_multiple_simple_fields() {
 fn test_enum_with_multiple_fields_equal_names() {
   parse_str_fail(
     r#"
-      enum foo {
+      enum Foo {
         bar
         bar
       }
@@ -86,7 +86,7 @@ fn test_enum_with_multiple_fields_equal_names() {
 fn test_enum_with_multiple_fields_invalid_names() {
   parse_str_warning(
     r#"
-      enum foo {
+      enum Foo {
         BarBaz
         BazBar
       }
@@ -98,7 +98,7 @@ fn test_enum_with_multiple_fields_invalid_names() {
 fn test_enum_with_field() {
   parse_str(
     r#"
-      enum foo {
+      enum Foo {
         bar = 1
       }
     "#,
@@ -109,7 +109,7 @@ fn test_enum_with_field() {
 fn test_enum_with_multiple_fields() {
   parse_str(
     r#"
-      enum foo {
+      enum Foo {
         bar = "bar"
         baz = "baz"
       }

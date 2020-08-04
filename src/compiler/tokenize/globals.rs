@@ -73,25 +73,36 @@ impl Tokenizer {
   }
 
   pub fn last_char(&self) -> char {
-    if self.index == 0 {
-      // There aren't any chars read yet return 0
-      // This is not really anywhere used so we can better return null than to return an option
-      // Just overcomplicates things when it issn't needed
-      return 0 as char;
+    let letter = self
+      .file
+      .bytes
+      .get(if self.index == 0 { 0 } else { self.index - 1 });
+
+    if let Some(c) = letter {
+      *c as char
+    } else {
+      0 as char
     }
-    return *self.file.bytes.get(self.index - 1).unwrap() as char;
   }
 
   pub fn must_next_char(&mut self) -> Result<char, LocationError> {
-    if let Some(c) = self.next_char() {
+    if let Some(c) = self.next_char().2 {
       Ok(c)
     } else {
       self.unexpected_eof()
     }
   }
 
-  pub fn next_char(&mut self) -> Option<char> {
-    let letter = *self.file.bytes.get(self.index)? as char;
+  /// Returns (added to index, added to y, char)
+  pub fn next_char(&mut self) -> (usize, u16, Option<char>) {
+    let letter = if let Some(l) = self.file.bytes.get(self.index) {
+      *l as char
+    } else {
+      return (0, 0, None);
+    };
+
+    let start_index = self.index;
+    let start_y = self.y;
 
     self.index += 1;
     if letter == '\n' {
@@ -100,33 +111,43 @@ impl Tokenizer {
 
     // check for the start of a comment
     if letter != '/' {
-      return Some(letter);
+      return (self.index - start_index, self.y - start_y, Some(letter));
     }
 
     // check for next forward slash
-    match *self.file.bytes.get(self.index)? as char {
-      '/' => {
+    match self.file.bytes.get(self.index) {
+      Some(b'/') => {
         // detected single line comment
         loop {
-          let next = *self.file.bytes.get(self.index)? as char;
+          let next = if let Some(l) = self.file.bytes.get(self.index) {
+            *l as char
+          } else {
+            return (self.index - start_index, self.y - start_y, None);
+          };
+
           self.index += 1;
 
           // check for newline (end of comment)
           if next == '\n' {
             self.y += 1;
-            return self.next_char();
+
+            return (
+              self.index - start_index,
+              self.y - start_y,
+              self.next_char().2,
+            );
           }
         }
       }
-      '*' => {
+      Some(b'*') => {
         // detected multi-line comment
         loop {
-          match *self.file.bytes.get(self.index)? as char {
-            '\n' => {
+          match self.file.bytes.get(self.index) {
+            Some(b'\n') => {
               self.y += 1;
               self.index += 1;
             }
-            '*' => {
+            Some(b'*') => {
               self.index += 1;
 
               // * detected
@@ -134,16 +155,21 @@ impl Tokenizer {
                 // */ detected
                 self.index += 1;
 
-                return self.next_char();
+                return (
+                  self.index - start_index,
+                  self.y - start_y,
+                  self.next_char().2,
+                );
               }
             }
-            _ => {
+            Some(_) => {
               self.index += 1;
             }
+            None => return (self.index - start_index, self.y - start_y, None),
           }
         }
       }
-      _ => return Some(letter),
+      _ => return (self.index - start_index, self.y - start_y, Some(letter)),
     }
   }
 
@@ -169,7 +195,7 @@ impl Tokenizer {
   }
 
   pub fn next_while(&mut self, chars: &'static str) -> Option<char> {
-    while let Some(c) = self.next_char() {
+    while let Some(c) = self.next_char().2 {
       if !chars.contains(c) {
         return Some(c);
       }
@@ -198,106 +224,116 @@ impl Tokenizer {
       meta_map.insert(option_str, option);
     }
 
+    let start_index = self.index;
+    let start_y = self.y;
+
     let mut char_count: usize = 0;
-    while let Some(c) = self.next_char() {
-      let mut new_options_vec: Vec<&str> = vec![];
-      for option in options_vec {
-        if option.len() <= char_count {
-          continue;
-        }
-        match option.as_bytes().get(char_count) {
-          Some(found_char) if *found_char as char == c => {
-            if option.len() != char_count + 1 {
-              new_options_vec.push(&option);
-              continue;
-            }
+    let mut next_char = self.next_char();
 
-            match meta_map.get(option) {
-              Some(meta) => {
-                if let Some(next_char_needs_to_match) = meta.after() {
-                  // This option contains a surfix match, test test it here
-                  let next_char = self.seek_next_char();
-                  if let None = next_char {
-                    continue;
-                  } else if !next_char_needs_to_match.contains(next_char.unwrap()) {
-                    continue;
-                  }
-                }
-
-                return Some(meta)
-              }
-              None => panic!("A critical error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
-            }
+    loop {
+      if let Some(c) = next_char.2 {
+        let mut new_options_vec: Vec<&str> = vec![];
+        for option in options_vec {
+          if option.len() <= char_count {
+            continue;
           }
-          _ => {}
+          match option.as_bytes().get(char_count) {
+            Some(found_char) if *found_char as char == c => {
+              if option.len() != char_count + 1 {
+                new_options_vec.push(&option);
+                continue;
+              }
+
+              match meta_map.get(option) {
+                Some(meta) => {
+                  if let Some(next_char_needs_to_match) = meta.after() {
+                    // This option contains a surfix match, test test it here
+                    let next_char = self.seek_next_char();
+                    if let None = next_char {
+                      continue;
+                    } else if !next_char_needs_to_match.contains(next_char.unwrap()) {
+                      continue;
+                    }
+                  }
+
+                  return Some(meta)
+                }
+                None => panic!("A critical error has occured, please create an issue at https://github.com/talpalang/talpa/issues with your code so we can resolve this"),
+              }
+            }
+            _ => {}
+          }
         }
+
+        next_char = self.next_char();
+        if new_options_vec.len() == 0 {
+          break;
+        }
+        options_vec = new_options_vec;
+        char_count += 1;
+      } else {
+        self.index = start_index;
+        self.y = start_y;
+        return None;
       }
-      if new_options_vec.len() == 0 {
-        break;
-      }
-      options_vec = new_options_vec;
-      char_count += 1;
     }
 
-    char_count += 1;
-
     // Reset the index if we havent found the requested item
-    self.index = if char_count > self.index {
-      0
-    } else {
-      self.index - char_count
-    };
+    self.index = start_index;
+    self.y = start_y;
 
     None
   }
 
   fn parse_nothing(&mut self) -> Result<(), LocationError> {
-    if let None = self.next_while(" \n\t") {
-      return Ok(());
-    }
-    self.index -= 1;
-    while let Some(_) = self.next_while(" \n\t") {
-      self.index -= 1;
-      match self.try_match(vec![
-        &Keywords::Fn,
-        &Keywords::Const,
-        &Keywords::Struct,
-        &Keywords::Enum,
-        &Keywords::Type,
-      ]) {
-        Some(Keywords::Const) => {
-          let parsed_variable = parse_var(self, Some(VarType::Const))?;
-          self.vars.push(parsed_variable);
+    loop {
+      if let Some(_) = self.next_while(" \n\t") {
+        self.index -= 1;
+        match self.try_match(vec![
+          &Keywords::Const,
+          &Keywords::Fn,
+          &Keywords::Struct,
+          &Keywords::Enum,
+          &Keywords::Type,
+        ]) {
+          Some(Keywords::Const) => {
+            let parsed_variable = parse_var(self, Some(VarType::Const))?;
+            self.vars.push(parsed_variable);
+          }
+          Some(Keywords::Fn) => {
+            let parsed_function = parse_function(self, false)?;
+            self.functions.push(parsed_function);
+          }
+          Some(Keywords::Struct) => {
+            let parsed_struct = parse_struct(self, false, false)?;
+            self.structs.push(parsed_struct);
+          }
+          Some(Keywords::Enum) => {
+            let parsed_enum = parse_enum(self, false, false)?;
+            self.enums.push(parsed_enum);
+          }
+          Some(Keywords::Type) => {
+            let parsed_type = parse_global_type(self)?;
+            self.types.push(parsed_type);
+          }
+          _ => {
+            let c = self.last_char();
+            if c != 0 as char {
+              return self.unexpected_char(c);
+            } else {
+              return self.unexpected_eof();
+            }
+          }
         }
-        Some(Keywords::Fn) => {
-          let parsed_function = parse_function(self, false)?;
-          self.functions.push(parsed_function);
-        }
-        Some(Keywords::Struct) => {
-          let parsed_struct = parse_struct(self, false, false)?;
-          self.structs.push(parsed_struct);
-        }
-        Some(Keywords::Enum) => {
-          let parsed_enum = parse_enum(self, false, false)?;
-          self.enums.push(parsed_enum);
-        }
-        Some(Keywords::Type) => {
-          let parsed_type = parse_global_type(self)?;
-          self.types.push(parsed_type);
-        }
-        _ => {
-          // could be newline/tab/whitespace
-          let c = self.must_next_char()?;
-          return self.unexpected_char(c);
-        }
+      } else {
+        return Ok(());
       }
     }
-    Ok(())
   }
 
   pub fn expect(&mut self, text: &str) -> Result<(), LocationError> {
     for letter in text.chars() {
-      match self.next_char() {
+      match self.next_char().2 {
         Some(v) if v == letter => {}
         Some(c) => return self.unexpected_char(c),
         None => return self.unexpected_eof(),

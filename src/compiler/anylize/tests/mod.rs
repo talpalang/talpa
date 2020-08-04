@@ -9,6 +9,7 @@ mod structs;
 mod variables;
 
 use super::*;
+use std::fmt::Debug;
 use tokenize::Tokenizer;
 
 fn new_file(contents: &str) -> File {
@@ -36,6 +37,19 @@ pub fn parse_str_fail(contents: impl Into<String>) {
   let (new_res, anilize_res) = anilize_tokens(res);
   if anilize_res.errors.len() == 0 {
     panic!("{:?}", new_res);
+  }
+}
+
+// Parse a string of code and expext it somewhere to fail
+pub fn parse_str_fail_with_meta(contents: impl Into<String>, meta: impl Debug) {
+  let res = match Tokenizer::tokenize(new_file(&contents.into())) {
+    Ok(res) => res,
+    Err(_) => return, // Test is successfull
+  };
+
+  let (new_res, anilize_res) = anilize_tokens(res);
+  if anilize_res.errors.len() == 0 {
+    panic!("Res: {:?}\nMeta: {:?}", new_res, meta);
   }
 }
 

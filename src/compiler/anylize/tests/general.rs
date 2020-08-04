@@ -11,13 +11,19 @@ fn fail_random_chars() {
 
   // Only one char
   for c in chars.chars() {
-    parse_str_fail(c.to_string());
+    parse_str_fail_with_meta(c.to_string(), c.to_string());
   }
 
   // Multiple chars
   for a in chars.chars() {
     for b in chars.chars() {
-      parse_str_fail(format!("{}{}", a, b));
+      let to_parse = format!("{}{}", a, b);
+      if &to_parse == "//" || &to_parse == "/*" {
+        // These 2 char letters should pass
+        parse_str(&to_parse);
+      } else {
+        parse_str_fail_with_meta(&to_parse, &to_parse);
+      }
     }
   }
 }

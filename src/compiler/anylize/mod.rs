@@ -197,13 +197,9 @@ where
     if let SnakeOrCamel::Snake = name_should_be {
       if !is_snake_case(&name) {
         anilized_res.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &item.location());
-        continue;
       }
-    } else {
-      if !is_camel_case(&name) {
-        anilized_res.add(AnylizeErrAndWarns::NameShouldBeCamelCase, &item.location());
-        continue;
-      }
+    } else if !is_camel_case(&name) {
+      anilized_res.add(AnylizeErrAndWarns::NameShouldBeCamelCase, &item.location());
     }
 
     used_keys.insert(name.clone());

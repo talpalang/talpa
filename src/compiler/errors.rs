@@ -31,23 +31,23 @@ impl LocationError {
       output.push(format!("Error in file: {}", self.file_name));
 
       if let Some(line) = err.prev_line.clone() {
-        output.push(format!("{}: {}", y - 1, line.replace("\t", "  ")));
+        output.push(format!("{}: {}", x - 1, line.replace("\t", "  ")));
       }
 
       let mut spacing = String::from("");
-      for _ in 0..x + y.to_string().len() + 1 {
+      for _ in 0..x + x.to_string().len() + y as usize + 1 {
         spacing += " ";
       }
       output.push(format!(
         "{}: {}\n{}^-- {}",
-        y,
+        x,
         line.replace("\t", "  "),
         spacing,
         err.error_type,
       ));
 
       if let Some(line) = err.next_line.clone() {
-        output.push(format!("{}: {}", y + 1, line.replace("\t", "  ")));
+        output.push(format!("{}: {}", x + 1, line.replace("\t", "  ")));
       }
     } else {
       output.push(format!(
@@ -120,7 +120,14 @@ impl Display for TokenizeError {
       Self::UnableToOpenFile(file_name) => write!(f, "Unable to open file {}", file_name),
       Self::IncompletedArgument => write!(f, "Incompletted argument"),
       Self::UnexpectedEOF => write!(f, "Unexpected EOF"),
-      Self::UnexpectedChar(c) => write!(f, "Unexpected char: {}", c),
+      Self::UnexpectedChar(c) => match c {
+        '\n' | '\t' => write!(
+          f,
+          "Unexpected char: {}",
+          if c == &'\n' { "\\n" } else { "\\t" }
+        ),
+        _ => write!(f, "Unexpected char: {}", c),
+      },
       Self::UnexpectedResult => write!(f, "Unexpected result"),
       Self::InvalidNameChar => write!(f, "Invalid name char"),
       Self::Custom(error) => write!(f, "{}", error),

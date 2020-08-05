@@ -105,8 +105,8 @@ impl Go {
 
     let mut fields = Block::new();
     for field in structure.fields {
-      let mut contents = Inline::from_str(format!("{} ", field.0));
-      self.parse_type(field.1, &mut contents);
+      let mut contents = Inline::from_str(format!("{} ", field.name));
+      self.parse_type(field.type_, &mut contents);
       fields.inline(contents);
     }
     lb.function(Inline::from_str(prefix_str), fields);

@@ -14,6 +14,18 @@ pub struct Function {
   pub body: Actions,
 }
 
+impl GetName for Function {
+  fn name(&self) -> Option<String> {
+    self.name.clone()
+  }
+}
+
+impl GetLocation for Function {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 pub fn parse_function(t: &mut Tokenizer, anonymous: bool) -> Result<Function, LocationError> {
   let location = t.last_index_location();
 

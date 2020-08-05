@@ -10,6 +10,7 @@ pub mod types;
 pub mod utils;
 pub mod variable;
 
+pub use super::anylize::utils::{GetLocation, GetName};
 use super::errors;
 use super::files;
 pub use action::{

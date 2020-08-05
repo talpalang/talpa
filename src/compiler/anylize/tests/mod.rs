@@ -22,7 +22,7 @@ pub fn parse_str(contents: impl Into<String>) -> AnilizedTokens {
   let res = Tokenizer::tokenize(new_file(&contents.into())).unwrap();
   let (tokens, anilize_res) = anilize_tokens(res);
   if anilize_res.errors.len() > 0 {
-    panic!(anilize_res.errors);
+    panic!("{:?}", anilize_res.errors);
   }
   tokens
 }

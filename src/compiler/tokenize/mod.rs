@@ -1,5 +1,6 @@
 pub mod action;
 pub mod actions;
+pub mod boolean;
 pub mod function;
 pub mod globals;
 pub mod numbers;
@@ -16,6 +17,7 @@ pub use action::{
   IfCheckAndBody,
 };
 pub use actions::Actions;
+pub use boolean::Boolean;
 pub use function::Function;
 pub use globals::Tokenizer;
 pub use numbers::{Number, NumberType};

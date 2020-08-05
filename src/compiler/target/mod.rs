@@ -8,7 +8,7 @@ pub use builder::{Block, BuildItems, Inline, LangBuilder};
 use golang::Go;
 use javascript::JavaScript;
 pub use tokenize::{
-  Action, ActionFor, ActionFunctionCall, ActionIf, ActionType, ActionWhile, Actions, Enum,
+  Action, ActionFor, ActionFunctionCall, ActionIf, ActionType, ActionWhile, Actions, Boolean, Enum,
   Function, GlobalType, Number, NumberType, String_, Struct, Type, TypeType, VarType, Variable,
 };
 

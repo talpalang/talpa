@@ -222,3 +222,45 @@ fn test_continue_outside_of_loop_fail() {
     "#,
   );
 }
+
+#[test]
+fn test_loop_unreachable_code_warning_continue() {
+  parse_str_warning(
+    r#"
+      fn test() {
+        loop {
+          continue
+          test()
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_loop_unreachable_code_warning_break() {
+  parse_str_warning(
+    r#"
+      fn test() {
+        loop {
+          continue
+          test()
+        }
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_loop_unreachable_code_warning_return() {
+  parse_str_warning(
+    r#"
+      fn test() string {
+        loop {
+          return ""
+          test()
+        }
+      }
+    "#,
+  );
+}

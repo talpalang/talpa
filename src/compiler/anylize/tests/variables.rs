@@ -66,3 +66,37 @@ fn test_variable_invalid_name_warning() {
     "#,
   );
 }
+
+#[test]
+fn test_undecleared_var_fail() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        a = 0
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_duplicated_vars_fail_1() {
+  parse_str_fail(
+    r#"
+      fn test() {
+        let a = 0
+        let a = 0
+      }
+    "#,
+  );
+}
+
+#[test]
+fn test_duplicated_vars_fail_2() {
+  parse_str_fail(
+    r#"
+      fn test(a int) {
+        let a = 0
+      }
+    "#,
+  );
+}

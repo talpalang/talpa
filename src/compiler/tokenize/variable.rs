@@ -20,6 +20,18 @@ pub struct Variable {
   pub location: CodeLocation,
 }
 
+impl GetName for Variable {
+  fn name(&self) -> Option<String> {
+    Some(self.name.clone())
+  }
+}
+
+impl GetLocation for Variable {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 impl Into<ActionType> for Variable {
   fn into(self) -> ActionType {
     ActionType::Variable(self)

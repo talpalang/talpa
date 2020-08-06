@@ -196,6 +196,18 @@ pub struct GlobalType {
   pub location: CodeLocation,
 }
 
+impl GetName for GlobalType {
+  fn name(&self) -> Option<String> {
+    Some(self.name.clone())
+  }
+}
+
+impl GetLocation for GlobalType {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 pub fn parse_global_type(t: &mut Tokenizer) -> Result<GlobalType, LocationError> {
   let location = t.last_index_location();
 
@@ -242,10 +254,23 @@ pub struct Enum {
   pub location: CodeLocation,
 }
 
+impl GetName for Enum {
+  fn name(&self) -> Option<String> {
+    self.name.clone()
+  }
+}
+
+impl GetLocation for Enum {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
+}
+
 #[derive(Debug, Clone)]
 pub struct EnumField {
   pub name: String,
   pub value: Option<Action>,
+  pub location: CodeLocation,
 }
 
 pub fn parse_enum(t: &mut Tokenizer, inline: bool, back_one: bool) -> Result<Enum, LocationError> {
@@ -303,6 +328,9 @@ pub fn parse_enum(t: &mut Tokenizer, inline: bool, back_one: bool) -> Result<Enu
       c if !valid_name_char(c) => return t.unexpected_char(c),
       c => c,
     };
+
+    let location = t.last_index_location();
+
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
     while let Some(c) = t.next_char().2 {
       match c {
@@ -318,6 +346,7 @@ pub fn parse_enum(t: &mut Tokenizer, inline: bool, back_one: bool) -> Result<Enu
     let mut to_add = EnumField {
       name: field_name_builder.to_string(t)?,
       value: None,
+      location,
     };
 
     // Parse the = symbol
@@ -353,9 +382,28 @@ pub struct Struct {
   /// The struct name if it's a named struct, inline structs don't have names
   pub name: Option<String>,
   /// The struct fields
-  pub fields: Vec<(String, Type)>,
+  pub fields: Vec<StructField>,
   /// The code location of the struct
   pub location: CodeLocation,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructField {
+  pub name: String,
+  pub type_: Type,
+  pub location: CodeLocation,
+}
+
+impl GetName for Struct {
+  fn name(&self) -> Option<String> {
+    self.name.clone()
+  }
+}
+
+impl GetLocation for Struct {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
 }
 
 pub fn parse_struct(
@@ -416,6 +464,9 @@ pub fn parse_struct(
       c if !valid_name_char(c) => return t.unexpected_char(c),
       c => c,
     };
+
+    let location = t.last_index_location();
+
     let mut field_name_builder = NameBuilder::new_with_char(first_name_char);
     while let Some(c) = t.next_char().2 {
       match c {
@@ -430,7 +481,11 @@ pub fn parse_struct(
     t.must_next_while(" \t")?;
     let parsed_type = parse_type(t, true)?;
 
-    res.fields.push((field_name, parsed_type));
+    res.fields.push(StructField {
+      name: field_name,
+      type_: parsed_type,
+      location,
+    });
   }
 
   Ok(res)

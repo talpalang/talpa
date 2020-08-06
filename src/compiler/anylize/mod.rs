@@ -1,4 +1,4 @@
-mod utils;
+pub mod utils;
 
 #[cfg(test)]
 mod tests;
@@ -12,7 +12,7 @@ use tokenize::{
   Action, ActionType, Actions, Enum, Function, GlobalType, Keywords, Struct, Type, TypeType,
   VarType, Variable,
 };
-use utils::{is_camel_case, is_snake_case, is_var_name, GetLocation, GetName};
+use utils::{is_pascal_case, is_snake_case, GetLocation, GetName};
 
 trait AddToAnylizeResults {
   fn add(self, add_to: &mut AnylizeResults);
@@ -21,8 +21,8 @@ trait AddToAnylizeResults {
 #[derive(Clone)]
 pub enum AnylizeErrAndWarns {
   // Warnings
-  NameShouldBeCamelCase, // SomeVarName
-  NameShouldBeSnakeCase, // some_var_name
+  NameShouldBePascalCase, // SomeVarName
+  NameShouldBeSnakeCase,  // some_var_name
   EmptyEnum,
   UnreachableCode,
 
@@ -43,7 +43,7 @@ pub enum AnylizeErrAndWarns {
 impl AnylizeErrAndWarns {
   fn is_warning(&self) -> bool {
     match self {
-      Self::NameShouldBeCamelCase
+      Self::NameShouldBePascalCase
       | Self::NameShouldBeSnakeCase
       | Self::EmptyEnum
       | Self::UnreachableCode => true,
@@ -66,8 +66,14 @@ impl Display for AnylizeErrAndWarns {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     match self {
       // Warnings
-      Self::NameShouldBeCamelCase => write!(f, "Name should be in camel case"),
-      Self::NameShouldBeSnakeCase => write!(f, "Name should be in snake case"),
+      Self::NameShouldBePascalCase => write!(
+        f,
+        "Name should be in pascal case (like this: SomeVariableName)"
+      ),
+      Self::NameShouldBeSnakeCase => write!(
+        f,
+        "Name should be in snake case (like this: some_variable_name)"
+      ),
       Self::EmptyEnum => write!(f, "Empty enum"),
       Self::UnreachableCode => write!(f, "Unreachable code"),
 
@@ -135,35 +141,35 @@ pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) 
   let functions = array_into_hash_map(
     tokenizer.functions.clone(),
     &mut used_keys,
-    SnakeOrCamel::Snake,
+    SnakeOrPascal::Snake,
     &mut anilized_res,
   );
 
   let vars = array_into_hash_map(
     tokenizer.vars.clone(),
     &mut used_keys,
-    SnakeOrCamel::Snake,
+    SnakeOrPascal::Snake,
     &mut anilized_res,
   );
 
   let structs = array_into_hash_map(
     tokenizer.structs.clone(),
     &mut used_keys,
-    SnakeOrCamel::Camel,
+    SnakeOrPascal::Pascal,
     &mut anilized_res,
   );
 
   let enums = array_into_hash_map(
     tokenizer.enums.clone(),
     &mut used_keys,
-    SnakeOrCamel::Camel,
+    SnakeOrPascal::Pascal,
     &mut anilized_res,
   );
 
   let types = array_into_hash_map(
     tokenizer.types.clone(),
     &mut used_keys,
-    SnakeOrCamel::Camel,
+    SnakeOrPascal::Pascal,
     &mut anilized_res,
   );
 
@@ -180,15 +186,15 @@ pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) 
   (res, anilized_res)
 }
 
-enum SnakeOrCamel {
+enum SnakeOrPascal {
   Snake,
-  Camel,
+  Pascal,
 }
 
 fn array_into_hash_map<T>(
   data: Vec<T>,
   used_keys: &mut HashSet<String>,
-  name_should_be: SnakeOrCamel,
+  name_should_be: SnakeOrPascal,
   anilized_res: &mut AnylizeResults,
 ) -> HashMap<String, T>
 where
@@ -213,12 +219,12 @@ where
       continue;
     }
 
-    if let SnakeOrCamel::Snake = name_should_be {
+    if let SnakeOrPascal::Snake = name_should_be {
       if !is_snake_case(&name) {
         anilized_res.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &item.location());
       }
-    } else if !is_camel_case(&name) {
-      anilized_res.add(AnylizeErrAndWarns::NameShouldBeCamelCase, &item.location());
+    } else if !is_pascal_case(&name) {
+      anilized_res.add(AnylizeErrAndWarns::NameShouldBePascalCase, &item.location());
     }
 
     used_keys.insert(name.clone());
@@ -226,66 +232,6 @@ where
   }
 
   res
-}
-
-impl GetName for Function {
-  fn name(&self) -> Option<String> {
-    self.name.clone()
-  }
-}
-
-impl GetLocation for Function {
-  fn location(&self) -> CodeLocation {
-    self.location.clone()
-  }
-}
-
-impl GetName for Variable {
-  fn name(&self) -> Option<String> {
-    Some(self.name.clone())
-  }
-}
-
-impl GetLocation for Variable {
-  fn location(&self) -> CodeLocation {
-    self.location.clone()
-  }
-}
-
-impl GetName for Struct {
-  fn name(&self) -> Option<String> {
-    self.name.clone()
-  }
-}
-
-impl GetLocation for Struct {
-  fn location(&self) -> CodeLocation {
-    self.location.clone()
-  }
-}
-
-impl GetName for Enum {
-  fn name(&self) -> Option<String> {
-    self.name.clone()
-  }
-}
-
-impl GetLocation for Enum {
-  fn location(&self) -> CodeLocation {
-    self.location.clone()
-  }
-}
-
-impl GetName for GlobalType {
-  fn name(&self) -> Option<String> {
-    Some(self.name.clone())
-  }
-}
-
-impl GetLocation for GlobalType {
-  fn location(&self) -> CodeLocation {
-    self.location.clone()
-  }
 }
 
 impl AnylizeResults {
@@ -320,7 +266,7 @@ impl AnylizeResults {
             continue;
           }
 
-          if !is_var_name(&arg_name) {
+          if !is_snake_case(&arg_name) {
             // TODO: use the location of the name here
             self.add(
               AnylizeErrAndWarns::NameShouldBeSnakeCase,
@@ -342,7 +288,7 @@ impl AnylizeResults {
 
       if let Some(name) = &function.name {
         // Check if the function name is snake case
-        if !is_var_name(name) {
+        if !is_snake_case(name) {
           self.add(
             AnylizeErrAndWarns::NameShouldBeSnakeCase,
             &function.location,
@@ -375,14 +321,12 @@ impl AnylizeResults {
       let mut used_field_names: Vec<String> = vec![];
       for field in enum_.fields {
         if used_field_names.contains(&field.name) {
-          // TODO: Use the location of the name here instaid of the enum
-          self.add(AnylizeErrAndWarns::AlreadyDefined, &enum_.location);
+          self.add(AnylizeErrAndWarns::AlreadyDefined, &field.location);
           continue;
         }
         used_field_names.push(field.name.clone());
-        if !is_var_name(&field.name) {
-          // TODO: Use the location of the name here instaid of the enum
-          self.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &enum_.location);
+        if !is_snake_case(&field.name) {
+          self.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &field.location);
         }
       }
     }
@@ -403,20 +347,19 @@ impl AnylizeResults {
 
   fn check_struct(&mut self, struct_: Struct, is_inline: bool) {
     let mut used_names: Vec<String> = vec![];
-    for (field_name, field_type) in struct_.fields {
-      if used_names.contains(&field_name) {
-        // TODO: Use the location of the name here
-        self.add(AnylizeErrAndWarns::NameAlreadyExists, &struct_.location);
+    for field in struct_.fields {
+      if used_names.contains(&field.name) {
+        // Check if the struct name issn't already used
+        self.add(AnylizeErrAndWarns::NameAlreadyExists, &field.location);
         continue;
       }
-      used_names.push(field_name.clone());
-      if !is_var_name(&field_name) {
+      used_names.push(field.name.clone());
+      if !is_snake_case(&field.name) {
         // Check if the struct field is snake case
-        // TODO: Use the location of the name here
-        self.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &struct_.location);
+        self.add(AnylizeErrAndWarns::NameShouldBeSnakeCase, &field.location);
       }
 
-      self.check_type(field_type);
+      self.check_type(field.type_);
     }
 
     if let Some(name) = &struct_.name {
@@ -426,8 +369,11 @@ impl AnylizeResults {
       }
 
       // check if the struct name is in snake case
-      if !is_camel_case(name) {
-        self.add(AnylizeErrAndWarns::NameShouldBeCamelCase, &struct_.location);
+      if !is_pascal_case(name) {
+        self.add(
+          AnylizeErrAndWarns::NameShouldBePascalCase,
+          &struct_.location,
+        );
       }
     } else if !is_inline {
       self.add(AnylizeErrAndWarns::NoName, &struct_.location);

@@ -59,9 +59,9 @@ This roadmap is used to track the progress on the project. If you add a feature 
         * [x]  Name
       * [x]  Enums, Structs, Global Types
         * [x]  Name
-      * [ ]  Validate type names
-        * [ ]  Duplicates
-        * [ ]  Reference to variable must exist
+      * [x]  Validate types names
+        * [x]  Duplicates
+        * [ ]  Reference to other types must exist
       * [ ]  List of actions
         * [ ]  Make it impossible to set variable without using it
         * [x]  No duplicated variable names

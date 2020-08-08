@@ -267,6 +267,7 @@ impl<'a> ParseAction<'a> {
         &Keywords::Break,
         &Keywords::Continue,
         &Keywords::If,
+        &Keywords::Pub,
       ])
     } else {
       None
@@ -302,13 +303,15 @@ impl<'a> ParseAction<'a> {
           let to_commit = self.parse_if()?;
           self.commit_state(to_commit)?;
         }
+        Keywords::Pub => unimplemented!(), // TODO
         Keywords::True
         | Keywords::False
         | Keywords::Fn
         | Keywords::Struct
         | Keywords::Enum
         | Keywords::Type
-        | Keywords::Else => return self.t.error(TokenizeError::UnexpectedResult),
+        | Keywords::Else
+        | Keywords::Import => return self.t.error(TokenizeError::UnexpectedResult),
       }
       return Ok(());
     }

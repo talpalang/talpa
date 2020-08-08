@@ -2,6 +2,7 @@ use super::*;
 use errors::{LocationError, StateError, TokenizeError};
 use files::{CodeLocation, File};
 use function::parse_function;
+use import::parse_import;
 use std::collections::HashMap;
 use std::fmt;
 use types::{parse_enum, parse_global_type, parse_struct};
@@ -17,6 +18,7 @@ pub struct Tokenizer {
   pub structs: Vec<Struct>,
   pub enums: Vec<Enum>,
   pub types: Vec<GlobalType>,
+  pub imports: Vec<Import>,
 }
 
 #[derive(Debug)]
@@ -26,6 +28,7 @@ struct SimpleTokenizer<'a> {
   pub structs: &'a Vec<Struct>,
   pub enums: &'a Vec<Enum>,
   pub types: &'a Vec<GlobalType>,
+  pub imports: &'a Vec<Import>,
 }
 
 impl<'a> fmt::Debug for Tokenizer {
@@ -36,6 +39,7 @@ impl<'a> fmt::Debug for Tokenizer {
       structs: &self.structs,
       enums: &self.enums,
       types: &self.types,
+      imports: &self.imports,
     };
     writeln!(f, "{:#?}", simple_tokenized)
   }
@@ -52,6 +56,7 @@ impl Tokenizer {
       structs: vec![],
       enums: vec![],
       types: vec![],
+      imports: vec![],
     };
 
     tokenizer.parse_nothing()?;
@@ -295,7 +300,12 @@ impl Tokenizer {
           &Keywords::Struct,
           &Keywords::Enum,
           &Keywords::Type,
+          &Keywords::Import,
         ]) {
+          Some(Keywords::Import) => {
+            let mut parsed_import = parse_import(self)?;
+            self.imports.append(&mut parsed_import);
+          }
           Some(Keywords::Const) => {
             let parsed_variable = parse_var(self, Some(VarType::Const))?;
             self.vars.push(parsed_variable);

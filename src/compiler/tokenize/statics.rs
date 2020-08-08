@@ -72,6 +72,7 @@ pub enum Keywords {
   Fn,
   If,
   Let,
+  Pub,
   For,
   Loop,
   Else,
@@ -84,6 +85,7 @@ pub enum Keywords {
   Break,
   Return,
   Struct,
+  Import,
   Continue,
 }
 
@@ -92,7 +94,7 @@ impl Keywords {
     let lower_word = word.to_lowercase();
     let words = [
       "fn", "let", "for", "loop", "type", "enum", "const", "while", "break", "struct", "return",
-      "continue", "if", "else", "true", "false",
+      "continue", "if", "else", "true", "false", "import", "pub",
     ];
     words.contains(&lower_word.as_str())
   }
@@ -105,6 +107,7 @@ impl MatchString for Keywords {
       Self::Fn => "fn",
       Self::Let => "let",
       Self::For => "for",
+      Self::Pub => "pub",
       Self::Loop => "loop",
       Self::Else => "else",
       Self::Type => "type",
@@ -115,6 +118,7 @@ impl MatchString for Keywords {
       Self::While => "while",
       Self::Break => "break",
       Self::Struct => "struct",
+      Self::Import => "import",
       Self::Return => "return",
       Self::Continue => "continue",
     }

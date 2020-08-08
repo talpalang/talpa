@@ -44,7 +44,7 @@ This roadmap is used to track the progress on the project. If you add a feature 
             * [ ] `match foo { _ => {} }`
             * [ ] `match foo { bar => {} _ => {} }`
       * [ ]  Importing
-        * [ ]  Detecting to import something
+        * [x]  Detecting to import something
         * [ ]  Validating imports
         * [ ]  Detect import cycles
         * [ ]  Proper debugging

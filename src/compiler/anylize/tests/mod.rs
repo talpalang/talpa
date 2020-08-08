@@ -4,6 +4,7 @@ mod functions;
 mod general;
 mod global_types;
 mod ifs;
+mod imports;
 mod loops;
 mod structs;
 mod variables;

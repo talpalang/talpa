@@ -1,5 +1,5 @@
 [package]
-name = "gpl"
+name = "talpa"
 version = "0.1.0"
 authors = ["mjarkk <mkopenga@gmail.com>", "TheOtterlord"]
 edition = "2018"

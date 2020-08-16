@@ -8,9 +8,9 @@ use anylize::anilize_tokens;
 pub use anylize::AnilizedTokens;
 pub use errors::LocationError;
 use errors::TokenizeError;
-pub use files::{CodeLocation, File};
+pub use files::{CodeLocation, File, Path};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 use target::generate;
 pub use target::Lang;
@@ -49,14 +49,23 @@ pub trait CompilerProps {
   fn debug_parsed_output(&mut self, _: String, _: String) {}
 }
 
+pub enum Work {
+  ParseFile(Path),
+}
+
 pub struct Compiler {
   opened_files: HashMap<String, Rc<Vec<u8>>>,
   options: Options,
   props: Rc<RefCell<dyn CompilerProps>>,
+  work_todo: VecDeque<Work>,
 }
 
 impl Compiler {
-  pub fn open_file(&mut self, file_name: &str) -> Result<File, LocationError> {
+  pub fn add_work(&mut self, work: Work) {
+    self.work_todo.push_back(work);
+  }
+
+  fn open_file(&mut self, file_name: &str) -> Result<File, LocationError> {
     if let Some(bytes) = self.opened_files.get(file_name) {
       Ok(File {
         bytes: Rc::clone(bytes),
@@ -89,59 +98,78 @@ impl Compiler {
 
     let mut c = Self {
       opened_files: HashMap::new(),
+      work_todo: VecDeque::from(vec![Work::ParseFile(Path::from(entry_file_name))]),
       options,
       props,
     };
 
-    let entry_file = match c.open_file(entry_file_name) {
-      Ok(val) => val,
-      Err(err) => {
-        c.props.borrow_mut().error(err);
-        return;
-      }
-    };
+    // TODO: remake this, we should probebly have one AnilizedTokens as output
+    let mut first_res: Option<AnilizedTokens> = None;
 
-    let res = match Tokenizer::tokenize(entry_file) {
-      Err(err) => {
-        c.props.borrow_mut().error(err);
-        return;
-      }
-      Ok(v) => v,
-    };
-
-    let file_name = res.file.name.clone();
-    let (formatted_res, anilize_res) = anilize_tokens(res);
-
-    for warning in anilize_res.warnings {
-      c.props.borrow_mut().warning(warning);
-    }
-
-    if anilize_res.errors.len() > 0 {
-      for error in anilize_res.errors {
-        c.props.borrow_mut().error(error);
-      }
-      return;
-    }
-
-    if c.options.debug {
-      c.props
-        .borrow_mut()
-        .debug_formatted_tokens(file_name.clone(), formatted_res.clone());
-    }
-
-    if let Some(lang) = c.options.lang {
-      let src = match generate(formatted_res, lang) {
-        Err(err) => {
-          c.props.borrow_mut().error(err);
-          return;
-        }
-        Ok(v) => v,
+    loop {
+      let todo = match c.work_todo.pop_front() {
+        None => break,
+        Some(data) => data,
       };
 
-      if c.options.debug {
-        c.props
-          .borrow_mut()
-          .debug_parsed_output(file_name.clone().to_string(), src)
+      match todo {
+        Work::ParseFile(to_parse_file_name) => {
+          let entry_file = match c.open_file(&to_parse_file_name.to_string()) {
+            Ok(val) => val,
+            Err(err) => {
+              c.props.borrow_mut().error(err);
+              return;
+            }
+          };
+
+          let res = match Tokenizer::tokenize(entry_file) {
+            Err(err) => {
+              c.props.borrow_mut().error(err);
+              return;
+            }
+            Ok(v) => v,
+          };
+
+          let file_name = res.file.name.clone();
+          let (formatted_res, anilize_res) = anilize_tokens(&mut c, res);
+
+          for warning in anilize_res.warnings {
+            c.props.borrow_mut().warning(warning);
+          }
+
+          if anilize_res.errors.len() > 0 {
+            for error in anilize_res.errors {
+              c.props.borrow_mut().error(error);
+            }
+            return;
+          }
+
+          if c.options.debug {
+            c.props
+              .borrow_mut()
+              .debug_formatted_tokens(file_name.clone(), formatted_res.clone());
+          }
+
+          first_res = Some(formatted_res);
+        }
+      }
+    }
+
+    if let Some(res) = first_res {
+      if let Some(lang) = c.options.lang {
+        let src = match generate(res, lang) {
+          Err(err) => {
+            c.props.borrow_mut().error(err);
+            return;
+          }
+          Ok(v) => v,
+        };
+
+        if c.options.debug {
+          c.props
+            .borrow_mut()
+            .debug_parsed_output(String::from("main.tp"), src) // TODO: fix the main.tp here
+        }
       }
     }
   }

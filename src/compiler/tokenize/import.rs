@@ -4,11 +4,23 @@ use files::CodeLocation;
 use statics::{valid_name_char, NameBuilder};
 use strings::parse_static_str;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Import {
-  name: String,
-  path: String_,
-  location: CodeLocation,
+  pub name: String,
+  pub path: String_,
+  pub location: CodeLocation,
+}
+
+impl GetName for Import {
+  fn name(&self) -> Option<String> {
+    Some(self.name.clone())
+  }
+}
+
+impl GetLocation for Import {
+  fn location(&self) -> CodeLocation {
+    self.location.clone()
+  }
 }
 
 pub fn parse_import(t: &mut Tokenizer) -> Result<Vec<Import>, LocationError> {

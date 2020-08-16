@@ -47,13 +47,13 @@ impl CompilerProps for CLI {
     fn get_options(&self) -> Options {
         self.options.clone()
     }
-    fn warning(&mut self, error: LocationError) {
+    fn warning(&mut self, warning: LocationError) {
         self.warnings += 1;
-        println!("Error:\n{:?}", error);
-    }
-    fn error(&mut self, warning: LocationError) {
-        self.errors += 1;
         println!("Warning:\n{:?}", warning);
+    }
+    fn error(&mut self, error: LocationError) {
+        self.errors += 1;
+        println!("Error:\n{:?}", error);
     }
     fn debug_formatted_tokens(&mut self, _: String, tokens: AnilizedTokens) {
         println!("Debug output:");

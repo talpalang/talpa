@@ -5,12 +5,12 @@ mod tests;
 
 use super::*;
 use core::fmt::Display;
-use files::File;
+use files::{File, Path};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use tokenize::{
-  Action, ActionType, Actions, Enum, Function, GlobalType, Keywords, Struct, Type, TypeType,
-  VarType, Variable,
+  Action, ActionType, Actions, Enum, Function, GlobalType, Import, Keywords, Struct, Type,
+  TypeType, VarType, Variable,
 };
 use utils::{is_pascal_case, is_snake_case, GetLocation, GetName};
 
@@ -107,6 +107,7 @@ pub struct AnilizedTokens {
   pub structs: HashMap<String, Struct>,
   pub enums: HashMap<String, Enum>,
   pub types: HashMap<String, GlobalType>,
+  pub imports: HashMap<String, Import>,
 }
 
 #[derive(Debug)]
@@ -116,6 +117,7 @@ struct SimpleAnilizedTokens<'a> {
   pub structs: &'a HashMap<String, Struct>,
   pub enums: &'a HashMap<String, Enum>,
   pub types: &'a HashMap<String, GlobalType>,
+  pub imports: &'a HashMap<String, Import>,
 }
 
 impl<'a> fmt::Debug for AnilizedTokens {
@@ -126,17 +128,28 @@ impl<'a> fmt::Debug for AnilizedTokens {
       structs: &self.structs,
       enums: &self.enums,
       types: &self.types,
+      imports: &self.imports,
     };
     writeln!(f, "{:#?}", simple)
   }
 }
 
-pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) {
+pub fn anilize_tokens(
+  compiler: &mut Compiler,
+  tokenizer: Tokenizer,
+) -> (AnilizedTokens, AnylizeResults) {
   let file = tokenizer.file;
 
   let mut anilized_res = AnylizeResults::new(file.clone());
 
   let mut used_keys: HashSet<String> = HashSet::new();
+
+  let imports = array_into_hash_map(
+    tokenizer.imports.clone(),
+    &mut used_keys,
+    SnakeOrPascal::Pascal,
+    &mut anilized_res,
+  );
 
   let functions = array_into_hash_map(
     tokenizer.functions.clone(),
@@ -180,8 +193,9 @@ pub fn anilize_tokens(tokenizer: Tokenizer) -> (AnilizedTokens, AnylizeResults) 
     structs,
     enums,
     types,
+    imports,
   };
-  anilized_res.check_anilized_tokens(&mut res);
+  anilized_res.check_anilized_tokens(compiler, &mut res);
 
   (res, anilized_res)
 }
@@ -251,7 +265,19 @@ impl AnylizeResults {
     }
   }
 
-  fn check_anilized_tokens(&mut self, data: &mut AnilizedTokens) {
+  fn check_anilized_tokens(&mut self, compiler: &mut Compiler, data: &mut AnilizedTokens) {
+    if data.imports.len() > 0 {
+      let mut path = Path::from(&self.file.name);
+      path.pop(); // Remove the filename from the path
+
+      for (_, import) in data.imports.clone() {
+        let mut cloned_path = path.clone();
+        cloned_path.push(import.path.content);
+
+        compiler.add_work(Work::ParseFile(cloned_path))
+      }
+    }
+
     // Check the global functions
     for (_, function) in data.functions.clone() {
       let mut check_state = CheckActionState::new(data);

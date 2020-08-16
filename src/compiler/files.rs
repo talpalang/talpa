@@ -147,3 +147,104 @@ impl File {
     Err(self.must_error(error, location))
   }
 }
+
+#[derive(Clone)]
+pub struct Path {
+  absolute: bool,
+  parts: Vec<String>,
+}
+
+impl Into<String> for Path {
+  fn into(self) -> String {
+    self.to_string()
+  }
+}
+
+impl Path {
+  pub fn new() -> Self {
+    Self {
+      absolute: false,
+      parts: vec![],
+    }
+  }
+  pub fn from(path: impl Into<String>) -> Self {
+    let mut res = Self::new();
+    res.push(path.into());
+    res
+  }
+  pub fn to_string(&self) -> String {
+    self.parts.join("/")
+  }
+  pub fn pop(&mut self) -> Option<String> {
+    self.parts.pop()
+  }
+  pub fn push_path(&mut self, path: Self) {
+    if self.parts.len() == 0 || path.absolute {
+      self.absolute = path.absolute;
+      self.parts = path.parts;
+      return;
+    }
+
+    if path.parts.len() == 0 {
+      return;
+    }
+
+    let mut parts = path.parts.iter();
+    let mut next = parts.next();
+
+    while let Some(item) = next {
+      if item == ".." {
+        if let Some(last) = self.parts.last() {
+          if last != ".." {
+            // Remove the last item
+            self.parts.remove(self.parts.len() - 1);
+            next = parts.next();
+            continue;
+          }
+        } else if self.absolute {
+          // trying to append ".." to "/"
+          // this always results in "/" so we can sklip this
+          next = parts.next();
+          continue;
+        }
+      }
+      break;
+    }
+
+    while let Some(item) = next {
+      self.parts.push(item.clone());
+    }
+  }
+  pub fn push(&mut self, path: String) {
+    let mut new_path = Self::new();
+    for (index, item) in path.split('/').into_iter().enumerate() {
+      if item == "." {
+        continue;
+      }
+
+      if item == "" {
+        if index == 0 {
+          new_path.absolute = true;
+        }
+        continue;
+      }
+
+      if item == ".." {
+        if let Some(last) = new_path.parts.last() {
+          if last != ".." {
+            // Remove the last item
+            new_path.parts.remove(new_path.parts.len() - 1);
+            continue;
+          }
+        } else if new_path.absolute {
+          // trying to append ".." to "/"
+          // this always results in "/" so we can sklip this
+          continue;
+        }
+      }
+
+      new_path.parts.push(item.to_string());
+    }
+    self.push_path(new_path);
+  }
+}

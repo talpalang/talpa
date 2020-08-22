@@ -268,6 +268,7 @@ impl<'a> ParseAction<'a> {
         &Keywords::Continue,
         &Keywords::If,
         &Keywords::Pub,
+        &Keywords::Match,
       ])
     } else {
       None
@@ -285,24 +286,28 @@ impl<'a> ParseAction<'a> {
           };
           let new_var = parse_var(self.t, Some(var_type))?;
           self.res = Some(Action::here(self.t, new_var.into()));
-        }
+        },
         Keywords::Return => {
           // Go to parsing the return
           let to_commit = self.parse_return()?;
           self.commit_state(to_commit)?;
-        }
+        },
         Keywords::Loop | Keywords::While | Keywords::For => {
           // Parse loop
           let to_commit = self.parse_looper(matched.clone().into())?;
           self.commit_state(to_commit)?;
-        }
+        },
         Keywords::Break => self.commit_state(ParseActionState::Break)?,
         Keywords::Continue => self.commit_state(ParseActionState::Continue)?,
         Keywords::If => {
           // Parse if statement
           let to_commit = self.parse_if()?;
           self.commit_state(to_commit)?;
-        }
+        },
+        Keywords::Match => {
+          let to_commit = self.parse_match()?;
+          self.commit_state(to_commit)?;
+        },
         Keywords::Pub => unimplemented!(), // TODO
         Keywords::True
         | Keywords::False
@@ -466,6 +471,80 @@ impl<'a> ParseAction<'a> {
     res.action = Some(action);
 
     Ok(res)
+  }
+  fn parse_match(&mut self) -> Result<ParseActionState, LocationError> {
+    self.t.must_next_while_empty()?;
+    self.t.index -= 1;
+
+    // parse the object to match
+    // TODO: replace with something better?
+    let to_match = ParseAction::start(self.t, true, ActionToExpect::Assignment("{"))?;
+
+    // parse each case
+    let c = self.t.must_next_while_empty()?;
+    if '{' != c {
+      return self.t.unexpected_char(c);
+    }
+
+    let mut if_ = IfCheckAndBody{check: Box::new(Action{location: CodeLocation{index: self.t.index, y: self.t.y},type_: ActionType::StaticBoolean(Boolean(false))}), body: Actions::empty()};
+    let mut if_parsed = false;
+
+    loop {
+      let c = self.t.must_next_while_empty()?;
+      if c == '}' {
+        break;
+      }
+      if !valid_name_char(c) {
+        return self.t.unexpected_char(c);
+      }
+
+      // parse check
+      let mut name = NameBuilder::new_with_char(c);
+      loop {
+        match self.t.must_next_char()? {
+          ' ' | '\t' | '\n' => break,
+          c if valid_name_char(c) => name.push(c),
+          c => return self.t.unexpected_char(c),
+        }
+      }
+      let parsed_name = match name.to_string(self.t) {
+        Ok(res) => res,
+        Err(_) => panic!()
+      };
+      // check for "=>"
+      let _ = self.t.must_next_while(" \t\n");
+      self.t.index -= 1;
+      match self.t.expect("=>") {
+        Ok(_) => {},
+        Err(_) => {} // Todo
+      }
+      // TODO
+      let action = ParseAction::start(self.t, false, ActionToExpect::ActionInBody);
+      if !if_parsed && parsed_name != "_" {
+        // add if
+        if_ = IfCheckAndBody{
+          check: Box::new(
+            Action {
+              type_: ActionType::Assigment(
+                ActionAssigment{
+                  name: parsed_name, action: Box::new(to_match.clone())
+                }
+              ),
+              location: CodeLocation::new(self.t.index, self.t.y)
+            }
+          ),
+          body: Actions{actions: vec![action.unwrap()]}
+        };
+        if_parsed = true;
+      } else {
+        // add else if
+      }
+    }
+    if if_parsed {
+      return Ok(ParseActionState::If(ActionIf{if_: if_, else_ifs: vec![], else_body: Some(Actions::empty())}));
+    } else {
+      return Ok(ParseActionState::Loop(Actions::empty()));
+    }
   }
   fn parse_if(&mut self) -> Result<ParseActionState, LocationError> {
     self.t.must_next_while_empty()?;

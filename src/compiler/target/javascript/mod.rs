@@ -11,6 +11,7 @@ impl JavaScript {
     for (_, func) in t.functions {
       code.function(func, lb);
     }
+    // define global vars
     for (_, glob) in t.vars {
       code.global_var(glob, lb);
     }

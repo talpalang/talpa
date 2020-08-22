@@ -11,5 +11,10 @@ fn test(a int, b int) {
 
 fn main() {
   let hello = "Hello, world!"
+  if hello == true {
+  }
+  match true {
+    hello => do_something()
+  }
   test(20, 48)
 }

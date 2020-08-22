@@ -87,6 +87,7 @@ pub enum Keywords {
   Struct,
   Import,
   Continue,
+  Match,
 }
 
 impl Keywords {
@@ -94,7 +95,7 @@ impl Keywords {
     let lower_word = word.to_lowercase();
     let words = [
       "fn", "let", "for", "loop", "type", "enum", "const", "while", "break", "struct", "return",
-      "continue", "if", "else", "true", "false", "import", "pub",
+      "continue", "if", "else", "true", "false", "import", "pub", "match"
     ];
     words.contains(&lower_word.as_str())
   }
@@ -121,6 +122,7 @@ impl MatchString for Keywords {
       Self::Import => "import",
       Self::Return => "return",
       Self::Continue => "continue",
+      Self::Match => "match",
     }
   }
   fn after(&self) -> Option<&'static str> {

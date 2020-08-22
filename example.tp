@@ -15,6 +15,7 @@ fn main() {
   }
   match true {
     hello => do_something()
+    _ => do_something()
   }
   test(20, 48)
 }

@@ -473,6 +473,11 @@ impl<'a> ParseAction<'a> {
     Ok(res)
   }
   fn parse_match(&mut self) -> Result<ParseActionState, LocationError> {
+    // TODO
+    // Allow things other than names to be matched
+    // Add errors
+    // Finally, refactor the code
+
     self.t.must_next_while_empty()?;
     self.t.index -= 1;
 
@@ -488,6 +493,10 @@ impl<'a> ParseAction<'a> {
 
     let mut if_ = IfCheckAndBody{check: Box::new(Action{location: CodeLocation{index: self.t.index, y: self.t.y},type_: ActionType::StaticBoolean(Boolean(false))}), body: Actions::empty()};
     let mut if_parsed = false;
+
+    let mut else_ifs = vec![];
+
+    let mut else_: Option<Actions> = None;
 
     loop {
       let c = self.t.must_next_while_empty()?;
@@ -518,7 +527,7 @@ impl<'a> ParseAction<'a> {
         Ok(_) => {},
         Err(_) => {} // Todo
       }
-      // TODO
+      // parse action
       let action = ParseAction::start(self.t, false, ActionToExpect::ActionInBody);
       if !if_parsed && parsed_name != "_" {
         // add if
@@ -536,12 +545,28 @@ impl<'a> ParseAction<'a> {
           body: Actions{actions: vec![action.unwrap()]}
         };
         if_parsed = true;
-      } else {
+      } else if parsed_name != "_" {
         // add else if
+        else_ifs.push(IfCheckAndBody{
+          check: Box::new(
+            Action {
+              type_: ActionType::Assigment(
+                ActionAssigment{
+                  name: parsed_name, action: Box::new(to_match.clone())
+                }
+              ),
+              location: CodeLocation::new(self.t.index, self.t.y)
+            }
+          ),
+          body: Actions{actions: vec![action.unwrap()]}
+        });
+      } else {
+        // add else and break
+        else_ = Some(Actions{actions: vec![action.unwrap()]});
       }
     }
     if if_parsed {
-      return Ok(ParseActionState::If(ActionIf{if_: if_, else_ifs: vec![], else_body: Some(Actions::empty())}));
+      return Ok(ParseActionState::If(ActionIf{if_: if_, else_ifs: else_ifs, else_body: else_}));
     } else {
       return Ok(ParseActionState::Loop(Actions::empty()));
     }

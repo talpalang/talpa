@@ -518,14 +518,14 @@ impl<'a> ParseAction<'a> {
       }
       let parsed_name = match name.to_string(self.t) {
         Ok(res) => res,
-        Err(_) => panic!()
+        Err(err) => return Err(err)
       };
       // check for "=>"
       let _ = self.t.must_next_while(" \t\n");
       self.t.index -= 1;
       match self.t.expect("=>") {
         Ok(_) => {},
-        Err(_) => {} // Todo
+        Err(res) => return Err(res)
       }
       // parse action
       let action = ParseAction::start(self.t, false, ActionToExpect::ActionInBody);
